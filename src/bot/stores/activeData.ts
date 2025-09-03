@@ -22,5 +22,5 @@ export const paymentSessions = new Map<string, {
   amount: number; 
   ticketCount: number; 
   expires: number;
-  userWallet: string;
+  userWallet: string | null;
 }>();

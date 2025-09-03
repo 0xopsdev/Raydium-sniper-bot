@@ -1,8 +1,8 @@
-# 🎟️ Crypto Lottery Discord Bot
+#  Crypto Lottery Discord Bot
 
 A Discord bot that allows users to purchase lottery tickets using cryptocurrency, with seamless integration to a web platform.
 
-## 🚀 Features
+##  Features
 
 - **Crypto Payments**: Accept USDC payments via Helio payment gateway
 - **Interactive Ticket Selection**: Choose numbers manually or use QuickPick
@@ -10,7 +10,7 @@ A Discord bot that allows users to purchase lottery tickets using cryptocurrency
 - **Social Sharing**: Auto-generated ticket images for social media
 - **Wallet Integration**: Link Discord accounts to crypto wallets
 
-## 🛠️ Tech Stack
+##  Tech Stack
 
 - **Frontend**: Next.js 14 with TypeScript
 - **Bot Framework**: Discord.js v14
@@ -19,14 +19,14 @@ A Discord bot that allows users to purchase lottery tickets using cryptocurrency
 - **Image Generation**: Canvas + Sharp
 - **Deployment**: Vercel/Netlify ready
 
-## 📋 Prerequisites
+##  Prerequisites
 
 - Node.js 18+ 
 - MongoDB database
 - Discord Bot Token
 - Helio API credentials
 
-## ⚙️ Setup
+##  Setup
 
 1. **Clone and Install**
    ```bash
@@ -64,14 +64,14 @@ A Discord bot that allows users to purchase lottery tickets using cryptocurrency
    npm run dev:bot
    ```
 
-## 🎮 Bot Commands
+##  Bot Commands
 
 - `/buy-tickets [number]` - Purchase lottery tickets
 - `/link-wallet [address]` - Link your crypto wallet
 - `/my-tickets` - View your recent tickets
 - `/quickpick` - Generate random numbers
 
-## 🔄 User Flow
+##  User Flow
 
 1. **Link Wallet**: User links Discord to crypto wallet
 2. **Buy Tickets**: User purchases tickets with USDC
@@ -79,14 +79,14 @@ A Discord bot that allows users to purchase lottery tickets using cryptocurrency
 4. **Auto-Sync**: Tickets sync to website database
 5. **Social Share**: Receive generated ticket image
 
-## 🏗️ API Endpoints
+##  API Endpoints
 
 - `POST /api/lottery/tickets` - Create new tickets
 - `GET /api/user/wallet` - Get user wallet info
 - `GET /api/tickets` - Fetch user tickets
 - `POST /api/webhooks/helio` - Payment webhook
 
-## 🎨 Ticket Image Generation
+##  Ticket Image Generation
 
 The bot automatically generates branded ticket images with:
 - User's selected numbers
@@ -96,7 +96,7 @@ The bot automatically generates branded ticket images with:
 - QR code linking to website
 - Social sharing prompts
 
-## 🔐 Security Features
+##  Security Features
 
 - Webhook signature verification
 - Wallet-Discord ID validation
@@ -104,7 +104,7 @@ The bot automatically generates branded ticket images with:
 - Rate limiting on commands
 - Secure payment processing
 
-## 🚀 Deployment
+##  Deployment
 
 ### Vercel (Recommended)
 ```bash
@@ -118,11 +118,9 @@ npm run build
 npm start
 ```
 
-## 📱 Discord Bot Invite
-
+##  Discord Bot Invite
 [Invite Bot to Server](https://discord.com/oauth2/authorize?client_id=1412476966363463762)
-
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create feature branch
@@ -130,14 +128,14 @@ npm start
 4. Push to branch
 5. Create Pull Request
 
-## 📄 License
+##  License
 
 MIT License - see LICENSE file for details
 
-## 🆘 Support
+## Support
 
 For support, join our Discord server or create an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the crypto community**
+**Built with roswelly for cryptolottery**

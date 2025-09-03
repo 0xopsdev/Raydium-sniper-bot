@@ -8,9 +8,6 @@ import { activePurchases, numberSelections } from '../stores/activeData';
 import { syncTicketsToBackend } from '../utils/ticketSync';
 
 export async function handleBuyTickets(interaction: any) {
-  // Acknowledge the interaction immediately to prevent timeout
-  await interaction.deferReply({ ephemeral: true });
-  
   const ticketCount = interaction.options.getInteger('number') || 1;
   const userId = interaction.user.id;
   const username = interaction.user.username;
@@ -79,10 +76,14 @@ export async function handleBuyTickets(interaction: any) {
       paymentId: payment.id
     });
 
-    // Create payment button that opens our payment page
+    // Create payment button with dynamic payment link
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     
-    const paymentUrl = `http://localhost:3000/pay?token=${payment.id}&amount=${totalAmount}&user=${userId}`;
+    // Generate dynamic payment link (Helio or Coinbase)
+    // const paymentUrl = useMockPayment 
+    //   ? `https://mock-payment.example.com/pay/${payment.id}`
+    //   : payment.url; // Use Helio's payment URL
+    const paymentUrl = "https://app.hel.io/pay/68b88b2e016a9c59ac358597";
     
     const payButton = new ActionRowBuilder()
       .addComponents(
@@ -93,8 +94,8 @@ export async function handleBuyTickets(interaction: any) {
       );
 
     const paymentMessage = useMockPayment 
-      ? ` **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n🎭 **MOCK PAYMENT MODE** - This is a test payment that will auto-complete in 5 seconds!\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\` (${user.walletType || 'Unknown'})\n\n⏰ Payment will auto-complete for testing.`
-      : ` **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\` (${user.walletType || 'Unknown'})\n\n⏰ Payment expires in 15 minutes.`;
+      ? `🎫 **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n🎭 **MOCK PAYMENT MODE** - This is a test payment that will auto-complete in 5 seconds!\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\`\n\n⏰ Payment will auto-complete for testing.`
+      : `🎫 **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\`\n\n⏰ Payment expires in 15 minutes.`;
 
     await interaction.editReply({
       content: paymentMessage,
@@ -110,10 +111,13 @@ export async function handleBuyTickets(interaction: any) {
           { status: 'completed', completedAt: new Date() }
         );
         
-        // Notify user that payment is complete
+        // Notify user that payment is complete and start number selection
         try {
           const user = await interaction.client.users.fetch(userId);
-          await user.send(`✅ **Payment Completed!** Your payment of $${totalAmount} USDC has been processed.\n\n💰 **Payment received at:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🎫 You can now select your lottery numbers!`);
+          await user.send(`✅ **Payment received!** Your payment of $${totalAmount} USDC has been processed.\n\n💰 **Payment received at:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🎫 **Let's choose your ticket numbers!** Use the number picker below to select your lottery numbers.`);
+          
+          // Trigger number selection flow
+          await startNumberSelectionFlow(interaction.client, userId, ticketCount, payment.id);
         } catch (error) {
           console.error('Error sending payment completion message:', error);
         }
@@ -129,39 +133,62 @@ export async function handleBuyTickets(interaction: any) {
 }
 
 export async function handleLinkWallet(interaction: any) {
-  await interaction.deferReply({ ephemeral: true });
-  
   const userId = interaction.user.id;
   const username = interaction.user.username;
+  const walletAddress = interaction.options.getString('address');
 
-  // Create a unique connection token
-  const connectionToken = `connect_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  // Store connection token temporarily (in production, use Redis or database)
-  const connectionUrl = `http://localhost:3000/connect-wallet?token=${connectionToken}&user=${userId}`;
-  
-  const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-  
-  const connectButton = new ActionRowBuilder()
-    .addComponents(
-      new ButtonBuilder()
-        .setLabel('🔗 Connect Wallet')
-        .setStyle(ButtonStyle.Link)
-        .setURL(connectionUrl)
-    );
+  if (!walletAddress) {
+    await interaction.editReply({
+      content: '❌ Please provide your wallet address.\n\n**Usage:** `/link-wallet [wallet_address]`\n\n**Example:** `/link-wallet 8x2f...Z9WQ`'
+    });
+    return;
+  }
 
-  await interaction.editReply({
-    content: `🔗 **Connect Your Wallet**\n\nClick the button below to connect your Solana wallet:\n\n📱 **Mobile:** Opens in your wallet app\n💻 **Desktop:** Opens in your browser\n\n⏰ **Connection expires in 10 minutes**`,
-    components: [connectButton]
-  });
+  // Basic wallet address validation (Solana addresses are 32-44 characters)
+  if (walletAddress.length < 32 || walletAddress.length > 44) {
+    await interaction.editReply({
+      content: '❌ Invalid wallet address format. Please provide a valid Solana wallet address.'
+    });
+    return;
+  }
 
-  // Store the connection token for verification (in production, use Redis)
-  // For now, we'll handle this in the web interface
+  try {
+    // Check if user already has a linked wallet
+    const existingUser = await User.findOne({ discordId: userId, isActive: true });
+    
+    if (existingUser) {
+      // Update existing user's wallet address
+      existingUser.walletAddress = walletAddress;
+      existingUser.username = username;
+      await existingUser.save();
+      
+      await interaction.editReply({
+        content: `✅ **Wallet Updated!**\n\n🔗 **New Wallet:** \`${walletAddress}\`\n👤 **Discord User:** ${username}\n\n🎫 **Ready to buy tickets!** Use \`/buy-tickets [number]\` to purchase lottery tickets.`
+      });
+    } else {
+      // Create new user record
+      const newUser = new User({
+        discordId: userId,
+        walletAddress: walletAddress,
+        username: username,
+        isActive: true
+      });
+      await newUser.save();
+      
+      await interaction.editReply({
+        content: `✅ **Wallet Linked Successfully!**\n\n🔗 **Wallet Address:** \`${walletAddress}\`\n👤 **Discord User:** ${username}\n\n🎫 **Ready to buy tickets!** Use \`/buy-tickets [number]\` to purchase lottery tickets.`
+      });
+    }
+
+  } catch (error) {
+    console.error('Error linking wallet:', error);
+    await interaction.editReply({
+      content: '❌ Failed to link wallet. Please try again or contact support.'
+    });
+  }
 }
 
 export async function handleMyTickets(interaction: any) {
-  await interaction.deferReply({ ephemeral: true });
-  
   const userId = interaction.user.id;
 
   try {
@@ -205,9 +232,8 @@ export async function handleQuickPick(interaction: any) {
   // Check if user has an active purchase
   const activePurchase = activePurchases.get(userId);
   if (!activePurchase) {
-    await interaction.reply({
-      content: '❌ No active ticket purchase found. Use `/buy-tickets` first.',
-      ephemeral: true
+    await interaction.editReply({
+      content: '❌ No active ticket purchase found. Use `/buy-tickets` first.'
     });
     return;
   }
@@ -225,4 +251,85 @@ export async function handleQuickPick(interaction: any) {
     content: `**QuickPick Generated!**\n\n🔢 **Numbers:** ${numbers.join(', ')}\n **Powerball:** ${powerball}\n\nClick "Submit Ticket" to confirm or use the number picker to customize.`,
     ephemeral: true
   });
+}
+
+// Start number selection flow after payment completion
+export async function startNumberSelectionFlow(client: any, userId: string, ticketCount: number, paymentId: string) {
+  try {
+    const user = await client.users.fetch(userId);
+    
+    // Initialize active purchase
+    activePurchases.set(userId, {
+      ticketCount,
+      currentTicket: 0,
+      tickets: [],
+      paymentId
+    });
+
+    // Clear any existing number selection
+    numberSelections.delete(userId);
+
+    // Create number selection interface
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+    
+    // Create number buttons (1-69) in rows of 10
+    const numberRows = [];
+    for (let i = 0; i < 7; i++) {
+      const row = new ActionRowBuilder();
+      for (let j = 1; j <= 10; j++) {
+        const number = i * 10 + j;
+        if (number <= 69) {
+          row.addComponents(
+            new ButtonBuilder()
+              .setCustomId(`number_${number}`)
+              .setLabel(number.toString())
+              .setStyle(ButtonStyle.Secondary)
+          );
+        }
+      }
+      numberRows.push(row);
+    }
+
+    // Create powerball dropdown
+    const powerballOptions = [];
+    for (let i = 1; i <= 25; i++) {
+      powerballOptions.push({
+        label: `Powerball ${i}`,
+        value: i.toString(),
+        description: `Select ${i} as your Powerball number`
+      });
+    }
+
+    const powerballRow = new ActionRowBuilder()
+      .addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('select_powerball')
+          .setPlaceholder('🎯 Select Powerball (1-25)')
+          .addOptions(powerballOptions)
+      );
+
+    // Create action buttons
+    const actionRow = new ActionRowBuilder()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId('quickpick')
+          .setLabel('🎲 QuickPick')
+          .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+          .setCustomId('submit_ticket')
+          .setLabel('✅ Submit Ticket')
+          .setStyle(ButtonStyle.Success)
+          .setDisabled(true)
+      );
+
+    const allRows = [...numberRows, powerballRow, actionRow];
+
+    await user.send({
+      content: `🎫 **Ticket 1 of ${ticketCount}**\n\n🔢 **Select 5 numbers (1-69):**\n🎯 **Select 1 Powerball (1-25):**\n\n**Current Selection:** \`No numbers selected\`\n\nClick the numbers below or use QuickPick for random numbers!`,
+      components: allRows
+    });
+
+  } catch (error) {
+    console.error('Error starting number selection flow:', error);
+  }
 }

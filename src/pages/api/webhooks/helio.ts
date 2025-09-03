@@ -63,14 +63,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function notifyDiscordBot(discordId: string, paymentId: string, metadata: any) {
   try {
-    // In a real implementation, you would:
-    // 1. Send a message to the Discord bot via WebSocket or HTTP
-    // 2. The bot would then continue with the ticket number selection flow
+    // Import the startNumberSelectionFlow function
+    const { startNumberSelectionFlow } = await import('@/bot/handlers/commandHandlers');
     
-    console.log(`Notifying Discord bot: Payment ${paymentId} completed for user ${discordId}`);
+    // Get the Discord client from the app locals
+    const discordClient = (global as any).discordClient;
     
-    // For now, we'll just log the notification
-    // You could implement a WebSocket connection or HTTP call to the bot here
+    if (!discordClient) {
+      console.error('Discord client not available');
+      return;
+    }
+
+    // Get ticket count from metadata
+    const ticketCount = metadata?.ticketCount || 1;
+    
+    // Notify user that payment is complete
+    const user = await discordClient.users.fetch(discordId);
+    await user.send(`✅ **Payment received!** Your payment has been processed.\n\n🎫 **Let's choose your ticket numbers!** Use the number picker below to select your lottery numbers.`);
+    
+    // Start the number selection flow
+    await startNumberSelectionFlow(discordClient, discordId, ticketCount, paymentId);
+    
+    console.log(`✅ Discord bot notified: Payment ${paymentId} completed for user ${discordId}, starting number selection for ${ticketCount} tickets`);
     
   } catch (error) {
     console.error('Error notifying Discord bot:', error);

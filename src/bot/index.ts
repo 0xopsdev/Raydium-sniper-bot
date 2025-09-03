@@ -31,19 +31,21 @@ config({ path: './config.env' });
 const app = express();
 app.use(express.json());
 
-// Create Discord client
+// Create Discord client=============================================================>>
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
   ],
 });
 
-// Make Discord client available to routes
+// Make Discord client available to routes and globally
 app.locals.discordClient = client;
+(global as any).discordClient = client;
 
 // Bot ready event
 client.once(Events.ClientReady, async (readyClient) => {
-  console.log(`🚀 Bot is ready! Logged in as ${readyClient.user.tag}`);
+  console.log(`✅ Bot is ready! Logged in as ${readyClient.user.tag}`);
+  console.log(`🎯 Bot is now listening for commands on ${readyClient.guilds.cache.size} servers`);
   
   // Connect to database
   try {
@@ -54,11 +56,30 @@ client.once(Events.ClientReady, async (readyClient) => {
   }
 });
 
+// Handle connection errors
+client.on(Events.Error, (error) => {
+  console.error('❌ Discord client error:', error);
+});
+
+client.on(Events.Warn, (warning) => {
+  console.warn('⚠️ Discord client warning:', warning);
+});
+
+// Note: Discord.js handles reconnection automatically
+
 // Handle slash command interactions
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
+
+  // Defer reply immediately to prevent timeout
+  try {
+    await interaction.deferReply({ ephemeral: true });
+  } catch (error) {
+    console.error('Error deferring reply:', error);
+    return;
+  }
 
   try {
     switch (commandName) {
@@ -75,11 +96,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
         await handleQuickPick(interaction);
         break;
       default:
-        await interaction.reply({ content: '❌ Unknown command!', ephemeral: true });
+        await interaction.editReply({ content: '❌ Unknown command!' });
     }
   } catch (error) {
     console.error('Error handling interaction:', error);
-    await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      }
+    } catch (replyError) {
+      console.error('Error sending error message:', replyError);
+    }
   }
 });
 
@@ -101,7 +130,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (error) {
     console.error('Error handling button interaction:', error);
-    await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      }
+    } catch (replyError) {
+      console.error('Error sending error message:', replyError);
+    }
   }
 });
 
@@ -119,7 +156,15 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   } catch (error) {
     console.error('Error handling select menu:', error);
-    await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      } else {
+        await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+      }
+    } catch (replyError) {
+      console.error('Error sending error message:', replyError);
+    }
   }
 });
 
@@ -130,10 +175,46 @@ app.use('/api', apiRoutes);
 // Start server on port 3000
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 API Server running on http://localhost:${PORT}`);
+  console.log(` API Server running on http://localhost:${PORT}`);
 });
 
-// Login to Discord
-client.login(process.env.DISCORD_BOT_TOKEN);
+// Login to Discord with retry logic
+async function loginWithRetry() {
+  let retries = 0;
+  const maxRetries = 5;
+  
+  while (retries < maxRetries) {
+    try {
+      console.log(`🔄 Attempting to login to Discord... (Attempt ${retries + 1}/${maxRetries})`);
+      await client.login(process.env.DISCORD_BOT_TOKEN);
+      break; // Success, exit the loop
+    } catch (error) {
+      retries++;
+      console.error(`❌ Login attempt ${retries} failed:`, error);
+      
+      if (retries >= maxRetries) {
+        console.error(' Max login retries reached. Bot failed to start.');
+        process.exit(1);
+      }
+      
+      const delay = Math.pow(2, retries) * 1000; // Exponential backoff
+      console.log(`⏳ Retrying in ${delay/1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+loginWithRetry();
+
+// Handle uncaught exceptions and unhandled rejections
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  // Don't exit the process, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
+});
 
 export default client;

@@ -66,7 +66,7 @@ export default function Home() {
         margin: '0 auto',
         fontFamily: 'Arial, sans-serif'
       }}>
-        <h1>🎟️ Crypto Lottery Discord Bot</h1>
+        <h1> Crypto Lottery Discord Bot</h1>
         
         <div style={{ 
           background: '#f5f5f5', 
@@ -152,7 +152,7 @@ export default function Home() {
             borderRadius: '8px',
             marginBottom: '2rem'
           }}>
-            <h3>🎫 User Tickets ({tickets.length})</h3>
+            <h3> User Tickets ({tickets.length})</h3>
             {tickets.map((ticket: any, index) => (
               <div key={index} style={{ 
                 border: '1px solid #ccc', 
@@ -175,7 +175,7 @@ export default function Home() {
           borderRadius: '8px',
           border: '1px solid #ffeaa7'
         }}>
-          <h3>📋 Bot Commands</h3>
+          <h3> Bot Commands</h3>
           <ul>
             <li><code>/buy-tickets [number]</code> - Purchase lottery tickets</li>
             <li><code>/link-wallet [address]</code> - Link your crypto wallet</li>
@@ -191,7 +191,7 @@ export default function Home() {
           border: '1px solid #bee5eb',
           marginTop: '2rem'
         }}>
-          <h3>🔗 Bot Invite Link</h3>
+          <h3> Bot Invite Link</h3>
           <p>
             <a 
               href="https://discord.com/oauth2/authorize?client_id=1412476966363463762"

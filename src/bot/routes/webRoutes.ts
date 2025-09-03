@@ -5,50 +5,91 @@ import { connectionTokens, paymentSessions } from '../stores/activeData';
 
 const router = express.Router();
 
-// Wallet connection page
-router.get('/connect-wallet', (req, res) => {
-  const { token, user } = req.query;
+// Wallet connection page (also handles payments)
+router.get('/connect-wallet', async (req, res) => {
+  const { token, user, amount, payment } = req.query;
   
   if (!token || !user) {
     return res.status(400).send('Invalid connection request');
   }
   
-  // Store token with expiration (10 minutes)
-  connectionTokens.set(token as string, {
-    userId: user as string,
-    expires: Date.now() + 10 * 60 * 1000
-  });
+  // Check if this is a payment request
+  const isPayment = payment === 'true' && amount;
+  
+  if (isPayment) {
+    // Store payment session (15 minutes)
+    paymentSessions.set(token as string, {
+      userId: user as string,
+      amount: parseFloat(amount as string),
+      ticketCount: Math.floor(parseFloat(amount as string) / 5), // $5 per ticket
+      expires: Date.now() + 15 * 60 * 1000,
+      userWallet: null // Will be set when wallet connects
+    });
+  } else {
+    // Store connection token with expiration (10 minutes)
+    connectionTokens.set(token as string, {
+      userId: user as string,
+      expires: Date.now() + 10 * 60 * 1000
+    });
+  }
+  
+  // Calculate SOL amount for payment (assuming $100 per SOL for demo)
+  const solAmount = isPayment ? parseFloat(amount as string) / 100 : 0;
+  const yourWallet = 'EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY';
   
   // Serve the wallet connection page
   res.send(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Connect Wallet - Crypto Lottery</title>
+      <title>${isPayment ? 'Pay for Lottery Tickets' : 'Connect Wallet'} - Crypto Lottery</title>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
-        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; background: #1a1a1a; color: white; }
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #1a1a1a; color: white; }
         .container { background: #2a2a2a; padding: 30px; border-radius: 15px; text-align: center; }
         .connect-btn { background: #5865f2; color: white; border: none; padding: 20px 40px; border-radius: 10px; font-size: 18px; cursor: pointer; width: 100%; margin: 20px 0; }
         .connect-btn:hover { background: #4752c4; }
         .connect-btn:disabled { background: #666; cursor: not-allowed; }
+        .pay-btn { background: #4CAF50; color: white; border: none; padding: 20px 40px; border-radius: 10px; font-size: 18px; cursor: pointer; width: 100%; margin: 20px 0; }
+        .pay-btn:hover { background: #45a049; }
+        .pay-btn:disabled { background: #666; cursor: not-allowed; }
         .status { margin: 20px 0; padding: 15px; border-radius: 8px; }
         .success { background: #2d5a2d; }
         .error { background: #5a2d2d; }
         .info { background: #2d4a5a; }
         .wallet-info { background: #333; padding: 15px; border-radius: 8px; margin: 20px 0; }
-        .wallet-address { font-family: monospace; word-break: break-all; margin: 10px 0; }
+        .payment-info { background: #333; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .wallet-address { font-family: monospace; word-break: break-all; margin: 10px 0; padding: 10px; background: #444; border-radius: 5px; }
         .balance { color: #4CAF50; font-weight: bold; margin: 10px 0; }
+        .amount { font-size: 24px; font-weight: bold; color: #4CAF50; margin: 15px 0; }
+        .copy-btn { background: #5865f2; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
       </style>
     </head>
     <body>
       <div class="container">
-        <h1>🔗 Connect Wallet</h1>
-        <p>Connect your Solana wallet to buy lottery tickets</p>
+        <h1>${isPayment ? '💳 Pay for Lottery Tickets' : '🔗 Connect Wallet'}</h1>
+        <p>${isPayment ? 'Connect your wallet and send payment for lottery tickets' : 'Connect your Solana wallet to buy lottery tickets'}</p>
+        
+        ${isPayment ? `
+          <div class="payment-info">
+            <h3>Payment Details:</h3>
+            <div class="amount">$${amount} USDC</div>
+            <p>For ${Math.floor(parseFloat(amount as string) / 5)} lottery ticket(s)</p>
+            
+            <h3>Send SOL to:</h3>
+            <div class="wallet-address" id="target-wallet">
+              ${yourWallet}
+              <button class="copy-btn" onclick="copyAddress('${yourWallet}')">📋 Copy</button>
+            </div>
+            
+            <h3>Amount to Send:</h3>
+            <div class="amount">${solAmount.toFixed(6)} SOL</div>
+          </div>
+        ` : ''}
         
         <div id="status" class="status info">
-          Click the button below to connect your wallet
+          ${isPayment ? 'Connect your wallet to send payment' : 'Click the button below to connect your wallet'}
         </div>
         
         <button class="connect-btn" onclick="connectWallet()" id="connect-btn">
@@ -59,15 +100,38 @@ router.get('/connect-wallet', (req, res) => {
           <h3>✅ Wallet Connected!</h3>
           <div class="wallet-address" id="wallet-address"></div>
           <div class="balance" id="wallet-balance"></div>
-          <button class="connect-btn" onclick="confirmConnection()" style="background: #2d5a2d;">
-            ✅ Confirm & Return to Discord
-          </button>
+          
+          ${isPayment ? `
+            <div class="amount" id="balance-check" style="margin: 15px 0;"></div>
+            <button class="pay-btn" onclick="sendPayment()" id="pay-btn" style="display: none;">
+              💳 Pay ${solAmount.toFixed(6)} SOL
+            </button>
+            <button class="connect-btn" onclick="confirmConnection()" style="background: #2d5a2d; display: none;" id="confirm-btn">
+              ✅ Confirm & Return to Discord
+            </button>
+          ` : `
+            <button class="connect-btn" onclick="confirmConnection()" style="background: #2d5a2d;">
+              ✅ Confirm & Return to Discord
+            </button>
+          `}
         </div>
+        
+        ${isPayment ? `
+          <div id="payment-info" style="display: none; margin-top: 20px;">
+            <button class="pay-btn" onclick="confirmPayment()" style="background: #2d5a2d;">
+              ✅ Confirm Payment Sent
+            </button>
+          </div>
+        ` : ''}
       </div>
       
       <script>
         let walletAddress = null;
         let walletBalance = 0;
+        let connectedWallet = null;
+        const isPayment = ${isPayment};
+        const solAmount = ${solAmount};
+        const yourWallet = '${yourWallet}';
         
         async function connectWallet() {
           const status = document.getElementById('status');
@@ -105,6 +169,7 @@ router.get('/connect-wallet', (req, res) => {
             // Connect to wallet
             const response = await wallet.connect();
             walletAddress = response.publicKey.toString();
+            connectedWallet = wallet;
             
             // Get wallet balance
             try {
@@ -124,6 +189,25 @@ router.get('/connect-wallet', (req, res) => {
             document.getElementById('wallet-address').textContent = walletAddress;
             document.getElementById('wallet-balance').textContent = \`Balance: \${walletBalance.toFixed(4)} SOL\`;
             document.getElementById('wallet-info').style.display = 'block';
+            
+            // Handle payment flow
+            if (isPayment) {
+              const balanceCheck = document.getElementById('balance-check');
+              const payBtn = document.getElementById('pay-btn');
+              const confirmBtn = document.getElementById('confirm-btn');
+              
+              if (walletBalance >= solAmount) {
+                balanceCheck.innerHTML = \`✅ Sufficient balance: \${walletBalance.toFixed(6)} SOL\`;
+                balanceCheck.style.color = '#4CAF50';
+                payBtn.style.display = 'block';
+                confirmBtn.style.display = 'none';
+              } else {
+                balanceCheck.innerHTML = \`❌ Insufficient balance! You need \${solAmount.toFixed(6)} SOL but only have \${walletBalance.toFixed(6)} SOL\`;
+                balanceCheck.style.color = '#f44336';
+                payBtn.style.display = 'none';
+                confirmBtn.style.display = 'block';
+              }
+            }
             
             status.className = 'status success';
             status.textContent = '✅ Wallet connected successfully!';
@@ -166,6 +250,109 @@ router.get('/connect-wallet', (req, res) => {
             status.className = 'status error';
             status.textContent = '❌ Failed to confirm connection: ' + error.message;
           }
+        }
+        
+        async function sendPayment() {
+          const status = document.getElementById('status');
+          const payBtn = document.getElementById('pay-btn');
+          
+          status.className = 'status info';
+          status.textContent = 'Preparing payment...';
+          payBtn.disabled = true;
+          payBtn.textContent = 'Preparing...';
+          
+          try {
+            if (!connectedWallet || !walletAddress) {
+              throw new Error('Wallet not connected. Please connect your wallet first.');
+            }
+            
+            // Create transaction
+            console.log('Sending payment from:', walletAddress, 'to:', yourWallet);
+            const response = await fetch('/api/create-transaction', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: '${token}',
+                fromAddress: walletAddress, // User's connected wallet
+                toAddress: yourWallet, // Your lottery wallet
+                amount: solAmount
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (!result.success) {
+              throw new Error(result.error);
+            }
+            
+            // Deserialize transaction
+            const transactionBuffer = Buffer.from(result.transaction, 'base64');
+            const transaction = require('@solana/web3.js').Transaction.from(transactionBuffer);
+            
+            // Sign and send transaction
+            const { signature } = await connectedWallet.signAndSendTransaction(transaction);
+            
+            status.className = 'status success';
+            status.textContent = \`✅ Payment sent! Transaction: \${signature}\`;
+            
+            // Show confirm payment button
+            document.getElementById('payment-info').style.display = 'block';
+            payBtn.style.display = 'none';
+            
+            // Automatically confirm payment after successful transaction
+            setTimeout(async () => {
+              await confirmPayment();
+            }, 2000);
+            
+          } catch (error) {
+            console.error('Payment error:', error);
+            status.className = 'status error';
+            status.textContent = '❌ ' + error.message;
+            payBtn.disabled = false;
+            payBtn.textContent = \`💳 Pay \${solAmount.toFixed(6)} SOL\`;
+          }
+        }
+        
+        async function confirmPayment() {
+          const status = document.getElementById('status');
+          status.className = 'status info';
+          status.textContent = 'Confirming payment...';
+          
+          try {
+            const response = await fetch('/api/confirm-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: '${token}',
+                userWallet: walletAddress
+              })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+              status.className = 'status success';
+              status.textContent = '✅ Payment confirmed! Your SOL has been transferred to our wallet. You can now close this window and return to Discord to pick your lottery numbers!';
+            } else {
+              status.className = 'status error';
+              status.textContent = '❌ ' + result.error;
+            }
+          } catch (error) {
+            status.className = 'status error';
+            status.textContent = '❌ Failed to confirm payment: ' + error.message;
+          }
+        }
+        
+        function copyAddress(address) {
+          navigator.clipboard.writeText(address).then(() => {
+            const copyBtn = event.target;
+            copyBtn.textContent = '✅ Copied!';
+            setTimeout(() => {
+              copyBtn.textContent = '📋 Copy';
+            }, 2000);
+          }).catch(err => {
+            console.error('Failed to copy address:', err);
+          });
         }
       </script>
     </body>
@@ -251,8 +438,8 @@ router.get('/pay', async (req, res) => {
              <h3>Amount to Send:</h3>
              <div class="amount">${solAmount.toFixed(6)} SOL</div>
              
-             <h3>Your Wallet:</h3>
-             <div class="wallet-address">${userRecord.walletAddress}</div>
+             <h3>Your Connected Wallet:</h3>
+             <div class="wallet-address" id="connected-wallet-address">Connecting...</div>
              
              <h3>Your Current Balance:</h3>
              <div class="amount" style="color: ${userBalance >= solAmount ? '#4CAF50' : '#f44336'}">
@@ -281,7 +468,7 @@ router.get('/pay', async (req, res) => {
         
         <script>
           let connectedWallet = null;
-          let walletAddress = '${userRecord.walletAddress}';
+          let walletAddress = null; // Will be set when user connects their wallet
           
           // Auto-connect to wallet on page load
           window.addEventListener('load', async () => {
@@ -306,10 +493,17 @@ router.get('/pay', async (req, res) => {
               
               // Connect to wallet
               const response = await wallet.connect();
-              walletAddress = response.publicKey.toString();
+              walletAddress = response.publicKey.toString(); // This is the user's connected wallet
               connectedWallet = wallet;
               
-              console.log('Wallet connected:', walletAddress);
+              // Update the UI to show the connected wallet
+              const walletDisplay = document.getElementById('connected-wallet-address');
+              if (walletDisplay) {
+                walletDisplay.textContent = walletAddress;
+              }
+              
+              console.log('User wallet connected:', walletAddress);
+              console.log('Target wallet (toAddress):', '${yourWallet}');
               
             } catch (error) {
               console.error('Error connecting wallet:', error);
@@ -326,18 +520,19 @@ router.get('/pay', async (req, res) => {
             payBtn.textContent = 'Preparing...';
             
             try {
-              if (!connectedWallet) {
+              if (!connectedWallet || !walletAddress) {
                 throw new Error('Wallet not connected. Please connect your wallet first.');
               }
               
               // Create transaction
+              console.log('Sending payment from:', walletAddress, 'to:', '${yourWallet}');
               const response = await fetch('/api/create-transaction', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   token: '${token}',
-                  fromAddress: walletAddress,
-                  toAddress: '${yourWallet}',
+                  fromAddress: walletAddress, // User's connected wallet
+                  toAddress: '${yourWallet}', // Your lottery wallet
                   amount: ${solAmount}
                 })
               });

@@ -25,7 +25,7 @@ const commands = [
     options: [
       {
         name: 'address',
-        description: 'Your wallet address',
+        description: 'Your Solana wallet address',
         type: 3, // STRING
         required: true
       }

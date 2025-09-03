@@ -23,7 +23,8 @@ export class MockPaymentService {
     const paymentId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     // Create a mock payment URL (this would normally be a real payment page)
-    const mockUrl = `https://mock-payment.example.com/pay/${paymentId}`;
+    // const mockUrl = `https://mock-payment.example.com/pay/${paymentId}`;
+    const mockUrl = `https://app.hel.io/pay/68b88b2e016a9c59ac358597`;
     
     console.log(`   Mock Payment Created:`);
     console.log(`   ID: ${paymentId}`);

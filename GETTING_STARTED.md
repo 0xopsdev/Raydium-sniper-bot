@@ -1,10 +1,10 @@
-# 🚀 Getting Started - Crypto Lottery Discord Bot
+#  Getting Started - Crypto Lottery Discord Bot
 
-## ✅ **Current Status: READY TO USE!**
+##  **Current Status: READY TO USE!**
 
 Your bot is now fully functional with both real and mock payment systems!
 
-## 🎯 **What You Can Do Right Now:**
+##  **What You Can Do Right Now:**
 
 ### 1. **Test the Bot (No Setup Required)**
 The bot now has a **mock payment system** that works without any external setup:
@@ -29,12 +29,12 @@ The bot now has a **mock payment system** that works without any external setup:
 - ✅ **No real money** involved
 
 ### Option B: **Real Payment Mode (Production)**
-- 💳 **Real USDC payments** via Helio
-- 🔗 **Requires Helio API setup** (see HELIO_SETUP.md)
-- 💰 **Actual crypto transactions**
-- 🚀 **Ready for production use**
+-  **Real USDC payments** via Helio
+-  **Requires Helio API setup** (see HELIO_SETUP.md)
+-  **Actual crypto transactions**
+-  **Ready for production use**
 
-## 🎮 **How to Test Right Now:**
+##  **How to Test Right Now:**
 
 ### Step 1: Invite Bot
 Click this link to add the bot to your Discord server:
@@ -55,7 +55,7 @@ Click this link to add the bot to your Discord server:
 4. You can then select lottery numbers
 5. Tickets are saved to the database
 
-## 🌐 **API Testing:**
+##  **API Testing:**
 
 Your Next.js server is running at `http://localhost:3000`
 
@@ -63,11 +63,10 @@ Test these endpoints:
 - `http://localhost:3000/api/user/wallet?discord_id=YOUR_DISCORD_ID`
 - `http://localhost:3000/api/tickets?discord_id=YOUR_DISCORD_ID`
 
-## 📊 **Database:**
-
+##  **Database:**
 Your MongoDB is connected and working. All tickets and user data are being saved.
 
-## 🔄 **Current Bot Status:**
+## **Current Bot Status:**
 
 - ✅ **Discord Bot**: Online and responding
 - ✅ **API Server**: Running on localhost:3000
@@ -75,7 +74,7 @@ Your MongoDB is connected and working. All tickets and user data are being saved
 - ✅ **Mock Payments**: Working for testing
 - ✅ **Commands**: All registered and functional
 
-## 🎉 **You're All Set!**
+##  **You're All Set!**
 
 **The bot is working perfectly!** You can:
 
@@ -84,14 +83,14 @@ Your MongoDB is connected and working. All tickets and user data are being saved
 3. **Deploy to production** when ready
 4. **Customize** the bot as needed
 
-## 🆘 **Need Help?**
+##  **Need Help?**
 
 - **Bot not responding?** Check if it's online in your server
 - **Commands not working?** Make sure the bot has proper permissions
 - **Want real payments?** Follow the HELIO_SETUP.md guide
 - **Want to deploy?** Check the DEPLOYMENT.md guide
 
-## 🎯 **Next Steps:**
+##  **Next Steps:**
 
 1. **Test the bot** with mock payments
 2. **Customize** the lottery rules or UI
@@ -100,4 +99,4 @@ Your MongoDB is connected and working. All tickets and user data are being saved
 
 ---
 
-**Your Crypto Lottery Discord Bot is ready to go! 🎟️ Start testing now!**
+**Your Crypto Lottery Discord Bot is ready to go!  Start testing now!**
