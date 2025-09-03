@@ -1,0 +1,54 @@
+{
+  "name": "crypto-lottery-discord-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for crypto lottery ticket purchasing",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "bot": "tsx src/bot/index.ts",
+    "dev:bot": "tsx watch src/bot/index.ts",
+    "register-commands": "tsx src/scripts/register-commands.ts",
+    "start-bot": "tsx src/scripts/start-bot.ts",
+    "test-setup": "tsx src/scripts/test-setup.ts",
+    "deploy": "next build && next start",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "@solana/wallet-adapter-base": "^0.9.27",
+    "@solana/wallet-adapter-react": "^0.15.39",
+    "@solana/wallet-adapter-react-ui": "^0.9.39",
+    "@solana/wallet-adapter-wallets": "^0.19.37",
+    "@solana/web3.js": "^1.98.4",
+    "axios": "^1.6.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "mongoose": "^8.0.0",
+    "next": "^14.0.0",
+    "qrcode": "^1.5.3",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "discord",
+    "bot",
+    "crypto",
+    "lottery",
+    "nextjs"
+  ],
+  "author": "Crypto Lottery",
+  "license": "MIT"
+}
