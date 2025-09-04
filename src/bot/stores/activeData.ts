@@ -4,6 +4,8 @@ export const activePurchases = new Map<string, {
   currentTicket: number;
   tickets: any[];
   paymentId: string;
+  totalAmount: number;
+  status: 'ticket_count_selected' | 'payment_pending' | 'payment_completed' | 'number_selection' | 'completed';
 }>();
 
 // Store number selections

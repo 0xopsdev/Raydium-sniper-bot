@@ -5,6 +5,8 @@ export interface IPayment extends Document {
   discordId: string;
   amount: number;
   currency: string;
+  ticketCount?: number;
+  walletAddress?: string;
   status: 'pending' | 'completed' | 'failed';
   helioTransactionId?: string;
   createdAt: Date;
@@ -31,6 +33,12 @@ const PaymentSchema = new Schema<IPayment>({
     type: String,
     required: true,
     default: 'USDC'
+  },
+  ticketCount: {
+    type: Number,
+  },
+  walletAddress: {
+    type: String,
   },
   status: {
     type: String,

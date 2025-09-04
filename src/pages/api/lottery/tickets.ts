@@ -16,22 +16,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { wallet_address, discord_id, tickets, payment_id, timestamp }: TicketPurchase = req.body;
 
     // Validate required fields
-    if (!wallet_address || !discord_id || !tickets || !payment_id) {
+    if (!discord_id || !tickets || !payment_id) {
       return res.status(400).json({ 
-        error: 'Missing required fields: wallet_address, discord_id, tickets, payment_id' 
+        error: 'Missing required fields: discord_id, tickets, payment_id' 
       });
     }
 
-    // Verify user exists and wallet is linked
-    const user = await User.findOne({ 
-      discordId: discord_id, 
-      walletAddress: wallet_address 
-    });
+    // Resolve wallet address: prefer request value, otherwise pull from user's linked wallet
+    let walletAddressToUse = wallet_address;
 
-    if (!user) {
-      return res.status(404).json({ 
-        error: 'User not found or wallet not linked' 
-      });
+    if (!walletAddressToUse) {
+      const userById = await User.findOne({ discordId: discord_id, isActive: true });
+      if (!userById) {
+        return res.status(404).json({ error: 'User not found or wallet not linked' });
+      }
+      walletAddressToUse = userById.walletAddress;
+    } else {
+      // If provided, ensure it matches user's linked wallet
+      const user = await User.findOne({ discordId: discord_id, isActive: true });
+      if (!user || user.walletAddress !== walletAddressToUse) {
+        return res.status(400).json({ error: 'Wallet does not match linked user wallet' });
+      }
     }
 
     // Verify payment exists and is completed
@@ -81,14 +86,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const drawDate = new Date();
     drawDate.setDate(drawDate.getDate() + 7); // Next week's draw
 
-    const createdTickets = [];
+    const createdTickets = [] as any[];
 
     for (const ticketData of tickets) {
       const ticketId = generateTicketId();
       
       const ticket = new LotteryTicket({
         discordId: discord_id,
-        walletAddress: wallet_address,
+        walletAddress: walletAddressToUse,
         numbers: ticketData.numbers.sort((a, b) => a - b),
         powerball: ticketData.powerball,
         type: ticketData.type,
@@ -110,7 +115,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         numbers: ticket.numbers,
         powerball: ticket.powerball,
         type: ticket.type,
-        drawDate: ticket.drawDate
+        drawDate: ticket.drawDate,
+        paymentId: ticket.paymentId,
+        discordId: ticket.discordId,
+        walletAddress: ticket.walletAddress
       }))
     });
 

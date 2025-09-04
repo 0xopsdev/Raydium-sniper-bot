@@ -8,7 +8,8 @@ import {
   handleBuyTickets, 
   handleLinkWallet, 
   handleMyTickets, 
-  handleQuickPick 
+  handleQuickPick,
+  handleSelectNumbers
 } from './handlers/commandHandlers';
 
 import {
@@ -17,7 +18,8 @@ import {
   handleQuickPickButton,
   handleSubmitTicket,
   handleNumberDropdown,
-  handlePowerballSelection
+  handlePowerballSelection,
+  handlePaymentCompleted
 } from './handlers/interactionHandlers';
 
 // Import routes
@@ -38,9 +40,8 @@ const client = new Client({
   ],
 });
 
-// Make Discord client available to routes and globally
+// Make Discord client available to routes
 app.locals.discordClient = client;
-(global as any).discordClient = client;
 
 // Bot ready event
 client.once(Events.ClientReady, async (readyClient) => {
@@ -95,6 +96,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       case 'quickpick':
         await handleQuickPick(interaction);
         break;
+      case 'select-numbers':
+        await handleSelectNumbers(interaction);
+        break;
       default:
         await interaction.editReply({ content: '❌ Unknown command!' });
     }
@@ -127,6 +131,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await handleQuickPickButton(interaction);
     } else if (customId === 'submit_ticket') {
       await handleSubmitTicket(interaction);
+    } else if (customId === 'payment_completed') {
+      await handlePaymentCompleted(interaction);
     }
   } catch (error) {
     console.error('Error handling button interaction:', error);

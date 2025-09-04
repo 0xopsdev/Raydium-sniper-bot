@@ -3,73 +3,40 @@ import LotteryTicket from '@/models/LotteryTicket';
 import Payment from '@/models/Payment';
 import { ticketGenerator } from '@/lib/ticketGenerator';
 
-// Sync tickets to backend via API
+// Sync tickets to backend
 export async function syncTicketsToBackend(activePurchase: any, userId: string) {
   try {
     const user = await User.findOne({ discordId: userId });
     if (!user) throw new Error('User not found');
 
-    // Prepare ticket data for API
-    const ticketPurchaseData = {
-      wallet_address: user.walletAddress,
-      discord_id: userId,
-      tickets: activePurchase.tickets.map((ticketData: any) => ({
+    const drawDate = new Date();
+    drawDate.setDate(drawDate.getDate() + 7); // Next week's draw
+
+    // Create tickets in database
+    for (const ticketData of activePurchase.tickets) {
+      const ticketId = ticketGenerator.generateTicketId();
+      
+      const ticket = new LotteryTicket({
+        discordId: userId,
+        walletAddress: user.walletAddress,
         numbers: ticketData.numbers,
         powerball: ticketData.powerball,
-        type: ticketData.type
-      })),
-      payment_id: activePurchase.paymentId,
-      timestamp: new Date().toISOString()
-    };
+        type: ticketData.type,
+        paymentId: activePurchase.paymentId,
+        ticketId,
+        drawDate,
+        isActive: true
+      });
 
-    // Call backend API to create tickets
-    const response = await fetch('http://localhost:3000/api/lottery/tickets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(ticketPurchaseData)
-    });
+      await ticket.save();
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`API Error: ${errorData.error || 'Unknown error'}`);
-    }
-
-    const result = await response.json();
-    console.log(`✅ Successfully synced ${result.tickets.length} tickets to backend for user ${userId}`);
-
-    // Generate and send ticket images for each created ticket
-    for (const ticketInfo of result.tickets) {
+      // Generate and send ticket image
       try {
-        // Create ticket object for image generation
-        const ticketForImage = {
-          ticketId: ticketInfo.ticketId,
-          numbers: ticketInfo.numbers,
-          powerball: ticketInfo.powerball,
-          drawDate: new Date(ticketInfo.drawDate),
-          type: ticketInfo.type
-        };
-
-        const imageBuffer = await ticketGenerator.generateTicketImage(ticketForImage);
-        
-        // Send ticket image to user via Discord
-        const { AttachmentBuilder } = require('discord.js');
-        const attachment = new AttachmentBuilder(imageBuffer, { name: `ticket_${ticketInfo.ticketId}.png` });
-        
-        // Get Discord client and send image
-        const discordClient = (global as any).discordClient;
-        if (discordClient) {
-          const user = await discordClient.users.fetch(userId);
-          await user.send({
-            content: `🎉 **Here's your official lottery ticket!**\n\n🎫 **Ticket #${ticketInfo.ticketId}**\n🔢 **Numbers:** ${ticketInfo.numbers.join(', ')} | **Powerball:** ${ticketInfo.powerball}\n📅 **Draw Date:** ${new Date(ticketInfo.drawDate).toLocaleDateString()}\n\n📸 **Share this on social media and tag @CryptoLottery!**`,
-            files: [attachment]
-          });
-        }
-        
-        console.log(`✅ Generated and sent ticket image for ${ticketInfo.ticketId}`);
+        const imageBuffer = await ticketGenerator.generateTicketImage(ticket);
+        // In a real implementation, you would send this image to the user
+        console.log(`Generated ticket image for ${ticketId}`);
       } catch (error) {
-        console.error('Error generating/sending ticket image:', error);
+        console.error('Error generating ticket image:', error);
       }
     }
 
@@ -79,7 +46,7 @@ export async function syncTicketsToBackend(activePurchase: any, userId: string) 
       { status: 'completed', completedAt: new Date() }
     );
 
-    console.log(`🎟️ All ${activePurchase.tickets.length} tickets submitted and synced!`);
+    console.log(`Successfully synced ${activePurchase.tickets.length} tickets for user ${userId}`);
 
   } catch (error) {
     console.error('Error syncing tickets to backend:', error);

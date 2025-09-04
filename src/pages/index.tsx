@@ -175,10 +175,30 @@ export default function Home() {
           borderRadius: '8px',
           border: '1px solid #ffeaa7'
         }}>
-          <h3> Bot Commands</h3>
+          <h3> Bot Commands & Corrected Workflow</h3>
+          <h4>Step 1: Pick Ticket Count</h4>
           <ul>
-            <li><code>/buy-tickets [number]</code> - Purchase lottery tickets</li>
-            <li><code>/link-wallet [address]</code> - Link your crypto wallet</li>
+            <li><code>/buy-tickets [number]</code> - Select number of tickets (1-10)</li>
+          </ul>
+          
+          <h4>Step 2: Connect Wallet & Send Payment</h4>
+          <ul>
+            <li>Click "Connect Wallet & Pay" button</li>
+            <li>Opens wallet connection page</li>
+            <li>Connect your Solana wallet</li>
+            <li>Send USDC payment to our wallet</li>
+          </ul>
+          
+          <h4>Step 3: Select Numbers (After Payment)</h4>
+          <ul>
+            <li>Automatic redirect to number selection page</li>
+            <li>Choose numbers manually or use Quick Pick mode</li>
+            <li>Select 5 main numbers (1-69) + 1 powerball (1-25)</li>
+            <li>All data automatically saved to database</li>
+          </ul>
+          
+          <h4>Other Commands</h4>
+          <ul>
             <li><code>/my-tickets</code> - View your recent tickets</li>
             <li><code>/quickpick</code> - Generate random numbers</li>
           </ul>

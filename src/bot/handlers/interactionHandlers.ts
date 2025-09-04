@@ -20,39 +20,18 @@ export async function handleNumberSelection(interaction: any) {
     isComplete: false
   };
 
-  // Check if number is already selected
-  if (selection.mainNumbers.includes(number)) {
-    await interaction.reply({
-      content: `❌ Number ${number} is already selected!`,
-      ephemeral: true
-    });
-    return;
-  }
-
-  // Add number if we haven't reached 5 yet
   if (selection.mainNumbers.length < 5) {
-    selection.mainNumbers.push(number);
-    selection.mainNumbers.sort((a, b) => a - b);
-    
-    // Check if selection is complete
-    selection.isComplete = selection.mainNumbers.length === 5 && selection.powerball > 0;
-    
-    numberSelections.set(userId, selection);
-
-    const statusText = selection.isComplete 
-      ? '✅ **Selection Complete!**' 
-      : `🔢 **Selected:** ${selection.mainNumbers.join(', ')} (${selection.mainNumbers.length}/5)`;
-
-    await interaction.reply({
-      content: `${statusText}\n\n**Main Numbers:** ${selection.mainNumbers.join(', ')}\n**Powerball:** ${selection.powerball || 'Not selected'}\n\n${selection.isComplete ? 'Click "Submit Ticket" to confirm!' : 'Select more numbers or choose your Powerball.'}`,
-      ephemeral: true
-    });
-  } else {
-    await interaction.reply({
-      content: `❌ You already have 5 numbers selected: ${selection.mainNumbers.join(', ')}\n\nRemove a number first or submit your ticket!`,
-      ephemeral: true
-    });
+    if (!selection.mainNumbers.includes(number)) {
+      selection.mainNumbers.push(number);
+    }
   }
+
+  numberSelections.set(userId, selection);
+
+  await interaction.reply({
+    content: `🔢 Selected: ${selection.mainNumbers.join(', ')} (${selection.mainNumbers.length}/5)`,
+    ephemeral: true
+  });
 }
 
 export async function handleQuickPickButton(interaction: any) {
@@ -90,7 +69,16 @@ export async function handleSubmitTicket(interaction: any) {
 
   if (!selection || !selection.isComplete || !activePurchase) {
     await interaction.reply({
-      content: '❌ Please complete your number selection first.\n\n**Required:** 5 main numbers (1-69) + 1 Powerball (1-25)',
+      content: '❌ Please complete your number selection first.',
+      ephemeral: true
+    });
+    return;
+  }
+
+  // Check if payment is completed
+  if (activePurchase.status !== 'payment_completed') {
+    await interaction.reply({
+      content: '❌ Payment not completed yet. Please complete payment first.',
       ephemeral: true
     });
     return;
@@ -110,29 +98,21 @@ export async function handleSubmitTicket(interaction: any) {
     numberSelections.delete(userId);
     
     await interaction.reply({
-      content: `✅ **Ticket ${activePurchase.currentTicket} submitted!**\n\n🎫 **Progress:** ${activePurchase.currentTicket}/${activePurchase.ticketCount}\n\n**Numbers:** ${selection.mainNumbers.join(', ')} | **Powerball:** ${selection.powerball}\n\nPlease select numbers for your next ticket.`,
+      content: `✅ **Ticket ${activePurchase.currentTicket} submitted!**\n\n🎫 **Progress:** ${activePurchase.currentTicket}/${activePurchase.ticketCount}\n\nPlease select numbers for your next ticket.`,
       ephemeral: true
     });
   } else {
     // All tickets completed, sync to backend
-    try {
-      await syncTicketsToBackend(activePurchase, userId);
-      
-      // Clear active purchase
-      activePurchases.delete(userId);
-      numberSelections.delete(userId);
-      
-      await interaction.reply({
-        content: `🎉 **All ${activePurchase.ticketCount} tickets submitted and synced!**\n\n✅ Your tickets have been saved to your account.\n🔗 View them on the website by connecting your wallet.\n\n🖼️ **Ticket images will be generated shortly for social sharing!**`,
-        ephemeral: true
-      });
-    } catch (error) {
-      console.error('Error syncing tickets:', error);
-      await interaction.reply({
-        content: '❌ **Error syncing tickets!** Please try again or contact support.',
-        ephemeral: true
-      });
-    }
+    await syncTicketsToBackend(activePurchase, userId);
+    
+    // Clear active purchase
+    activePurchases.delete(userId);
+    numberSelections.delete(userId);
+    
+    await interaction.reply({
+      content: '🎉 **All tickets submitted and synced!**\n\n✅ Your tickets have been saved to your account.\n🔗 View them on the website by connecting your wallet.',
+      ephemeral: true
+    });
   }
 }
 
@@ -159,12 +139,79 @@ export async function handlePowerballSelection(interaction: any) {
   
   numberSelections.set(userId, selection);
 
-  const statusText = selection.isComplete 
-    ? '✅ **Selection Complete!**' 
-    : `🎯 **Powerball selected:** ${powerball}`;
+  await interaction.reply({
+    content: ` Powerball selected: ${powerball}\n\n${selection.isComplete ? '✅ Selection complete! Click "Submit Ticket" to confirm.' : '🔢 Please select 5 main numbers first.'}`,
+    ephemeral: true
+  });
+}
+
+export async function handlePaymentCompleted(interaction: any) {
+  const userId = interaction.user.id;
+  const activePurchase = activePurchases.get(userId);
+
+  if (!activePurchase) {
+    await interaction.reply({
+      content: '❌ No active purchase found.',
+      ephemeral: true
+    });
+    return;
+  }
+
+  // Update purchase status to payment completed
+  activePurchase.status = 'payment_completed';
+  activePurchases.set(userId, activePurchase);
+
+  // Create number selection interface
+  const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
+  
+  // Create number selection buttons (1-69)
+  const numberButtons = [];
+  for (let i = 1; i <= 69; i += 10) {
+    const row = new ActionRowBuilder();
+    for (let j = i; j < Math.min(i + 10, 70); j++) {
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`number_${j}`)
+          .setLabel(j.toString())
+          .setStyle(ButtonStyle.Secondary)
+      );
+    }
+    numberButtons.push(row);
+  }
+
+  // Powerball selection dropdown
+  const powerballOptions = [];
+  for (let i = 1; i <= 25; i++) {
+    powerballOptions.push({
+      label: i.toString(),
+      value: i.toString()
+    });
+  }
+
+  const powerballSelect = new ActionRowBuilder()
+    .addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('select_powerball')
+        .setPlaceholder('Select Powerball (1-25)')
+        .addOptions(powerballOptions)
+    );
+
+  // Action buttons
+  const actionButtons = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId('quickpick')
+        .setLabel('🎲 Quick Pick')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('submit_ticket')
+        .setLabel('✅ Submit Ticket')
+        .setStyle(ButtonStyle.Success)
+    );
 
   await interaction.reply({
-    content: `${statusText}\n\n**Main Numbers:** ${selection.mainNumbers.join(', ') || 'Not selected'}\n**Powerball:** ${powerball}\n\n${selection.isComplete ? 'Click "Submit Ticket" to confirm!' : 'Please select 5 main numbers first.'}`,
+    content: `🎉 **Payment Completed!**\n\n🎫 **Ticket ${activePurchase.currentTicket + 1} of ${activePurchase.ticketCount}**\n\n🔢 **Select 5 main numbers (1-69) and 1 powerball (1-25):**`,
+    components: [...numberButtons, powerballSelect, actionButtons],
     ephemeral: true
   });
 }

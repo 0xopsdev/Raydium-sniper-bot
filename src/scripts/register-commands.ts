@@ -25,7 +25,7 @@ const commands = [
     options: [
       {
         name: 'address',
-        description: 'Your Solana wallet address',
+        description: 'Your wallet address',
         type: 3, // STRING
         required: true
       }
@@ -38,6 +38,10 @@ const commands = [
   {
     name: 'quickpick',
     description: 'Generate random numbers for your ticket'
+  },
+  {
+    name: 'select-numbers',
+    description: 'Start number selection after payment completion'
   }
 ];
 

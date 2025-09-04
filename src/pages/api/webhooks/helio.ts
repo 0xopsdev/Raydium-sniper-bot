@@ -63,28 +63,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 async function notifyDiscordBot(discordId: string, paymentId: string, metadata: any) {
   try {
-    // Import the startNumberSelectionFlow function
-    const { startNumberSelectionFlow } = await import('@/bot/handlers/commandHandlers');
+    // Import the active purchases store
+    const { activePurchases } = await import('@/bot/stores/activeData');
     
-    // Get the Discord client from the app locals
-    const discordClient = (global as any).discordClient;
-    
-    if (!discordClient) {
-      console.error('Discord client not available');
-      return;
+    // Update the active purchase status
+    const activePurchase = activePurchases.get(discordId);
+    if (activePurchase) {
+      activePurchase.status = 'payment_completed';
+      activePurchase.paymentId = paymentId;
+      activePurchases.set(discordId, activePurchase);
+      
+      console.log(`Updated active purchase for user ${discordId} to payment_completed`);
     }
-
-    // Get ticket count from metadata
-    const ticketCount = metadata?.ticketCount || 1;
     
-    // Notify user that payment is complete
-    const user = await discordClient.users.fetch(discordId);
-    await user.send(`✅ **Payment received!** Your payment has been processed.\n\n🎫 **Let's choose your ticket numbers!** Use the number picker below to select your lottery numbers.`);
+    console.log(`Notifying Discord bot: Payment ${paymentId} completed for user ${discordId}`);
     
-    // Start the number selection flow
-    await startNumberSelectionFlow(discordClient, discordId, ticketCount, paymentId);
-    
-    console.log(`✅ Discord bot notified: Payment ${paymentId} completed for user ${discordId}, starting number selection for ${ticketCount} tickets`);
+    // In a real implementation, you would send a message to the Discord bot
+    // For now, the user will need to manually trigger the number selection
     
   } catch (error) {
     console.error('Error notifying Discord bot:', error);

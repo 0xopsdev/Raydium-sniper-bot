@@ -1,4 +1,5 @@
 import { helioService } from '@/lib/helio';
+import connectDB from '@/lib/database';
 import { mockPaymentService } from '@/lib/mockPayment';
 import { ticketGenerator } from '@/lib/ticketGenerator';
 import User from '@/models/User';
@@ -19,115 +20,45 @@ export async function handleBuyTickets(interaction: any) {
     return;
   }
 
-  // Check if user has linked wallet
-  const user = await User.findOne({ discordId: userId, isActive: true });
-  if (!user) {
-    await interaction.editReply({
-      content: '❌ Please connect your wallet first using `/link-wallet` command.'
-    });
-    return;
-  }
-
   const ticketPrice = 5; // $5 USDC per ticket
   const totalAmount = ticketCount * ticketPrice;
 
   try {
-    // Create payment with Helio or Mock service
-    const paymentData = {
-      amount: totalAmount,
-      currency: 'USDC',
-      description: `Crypto Lottery - ${ticketCount} ticket(s)`,
-      metadata: {
-        discordId: userId,
-        ticketCount: ticketCount
-      }
-    };
-
-    // Use mock service if Helio credentials are not set or if there's a connection error
-    const useMockPayment = !process.env.HELIO_API_KEY || 
-                          process.env.HELIO_API_KEY === 'your_helio_api_key_here' ||
-                          process.env.HELIO_API_KEY === '';
-    
-    let payment;
-    try {
-      payment = useMockPayment 
-        ? await mockPaymentService.createPayment(paymentData)
-        : await helioService.createPayment(paymentData);
-    } catch (error) {
-      console.log('Helio API failed, falling back to mock payment:', error);
-      payment = await mockPaymentService.createPayment(paymentData);
-    }
-
-    // Store payment in database
-    const paymentRecord = new Payment({
-      paymentId: payment.id,
-      discordId: userId,
-      amount: totalAmount,
-      currency: 'USDC',
-      status: 'pending'
-    });
-    await paymentRecord.save();
-
-    // Store active purchase
+    // Store ticket count for payment flow
     activePurchases.set(userId, {
       ticketCount,
       currentTicket: 0,
       tickets: [],
-      paymentId: payment.id
+      paymentId: '', // Will be set after payment creation
+      totalAmount,
+      status: 'ticket_count_selected'
     });
 
-    // Create payment button with dynamic payment link
+    // Create payment button that opens wallet connection and payment page
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     
-    // Generate dynamic payment link (Helio or Coinbase)
-    // const paymentUrl = useMockPayment 
-    //   ? `https://mock-payment.example.com/pay/${payment.id}`
-    //   : payment.url; // Use Helio's payment URL
-    const paymentUrl = "https://app.hel.io/pay/68b88b2e016a9c59ac358597";
+    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+    const paymentUrl = `${webBaseUrl}/connect-wallet?tickets=${ticketCount}&amount=${totalAmount}&user=${userId}`;
     
     const payButton = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
-          .setLabel('💳 Pay Now')
+          .setLabel('💳 Connect Wallet & Pay')
           .setStyle(ButtonStyle.Link)
           .setURL(paymentUrl)
       );
 
-    const paymentMessage = useMockPayment 
-      ? `🎫 **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n🎭 **MOCK PAYMENT MODE** - This is a test payment that will auto-complete in 5 seconds!\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\`\n\n⏰ Payment will auto-complete for testing.`
-      : `🎫 **Awesome! To purchase ${ticketCount} ticket(s), please send **$${totalAmount} USDC**\n\n💰 **Send USDC to:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🔗 **Your Connected Wallet:** \`${user.walletAddress}\`\n\n⏰ Payment expires in 15 minutes.`;
+    const paymentMessage = `🎫 **Step 1: Ticket Count Selected**\n\n📊 **Tickets:** ${ticketCount}\n💰 **Total Cost:** $${totalAmount} USDC\n\n**Next Step:** Click the button below to connect your wallet and send payment:`;
 
     await interaction.editReply({
       content: paymentMessage,
       components: [payButton]
     });
 
-    // If using mock payment, simulate completion
-    if (useMockPayment) {
-      mockPaymentService.simulatePaymentCompletion(payment.id, async (completedPaymentId) => {
-        // Update payment status in database
-        await Payment.findOneAndUpdate(
-          { paymentId: completedPaymentId },
-          { status: 'completed', completedAt: new Date() }
-        );
-        
-        // Notify user that payment is complete and start number selection
-        try {
-          const user = await interaction.client.users.fetch(userId);
-          await user.send(`✅ **Payment received!** Your payment of $${totalAmount} USDC has been processed.\n\n💰 **Payment received at:** \`EPnmEdiLyv38zZ2Fq9ma3NvejjzsDh8YJnUQwf98i3MY\`\n\n🎫 **Let's choose your ticket numbers!** Use the number picker below to select your lottery numbers.`);
-          
-          // Trigger number selection flow
-          await startNumberSelectionFlow(interaction.client, userId, ticketCount, payment.id);
-        } catch (error) {
-          console.error('Error sending payment completion message:', error);
-        }
-      });
-    }
-
   } catch (error) {
-    console.error('Error creating payment:', error);
+    console.error('Error setting up ticket purchase:', error);
     await interaction.editReply({
-      content: '❌ Failed to create payment. Please try again.'
+      content: '❌ Failed to set up ticket purchase. Please try again.'
     });
   }
 }
@@ -135,88 +66,77 @@ export async function handleBuyTickets(interaction: any) {
 export async function handleLinkWallet(interaction: any) {
   const userId = interaction.user.id;
   const username = interaction.user.username;
-  const walletAddress = interaction.options.getString('address');
 
-  if (!walletAddress) {
-    await interaction.editReply({
-      content: '❌ Please provide your wallet address.\n\n**Usage:** `/link-wallet [wallet_address]`\n\n**Example:** `/link-wallet 8x2f...Z9WQ`'
-    });
-    return;
-  }
+  // Create a unique connection token
+  const connectionToken = `connect_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Store connection token temporarily (in production, use Redis or database)
+  const connectionUrl = `http://localhost:3000/connect-wallet?token=${connectionToken}&user=${userId}`;
+  
+  const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+  
+  const connectButton = new ActionRowBuilder()
+    .addComponents(
+      new ButtonBuilder()
+        .setLabel('🔗 Connect Wallet')
+        .setStyle(ButtonStyle.Link)
+        .setURL(connectionUrl)
+    );
 
-  // Basic wallet address validation (Solana addresses are 32-44 characters)
-  if (walletAddress.length < 32 || walletAddress.length > 44) {
-    await interaction.editReply({
-      content: '❌ Invalid wallet address format. Please provide a valid Solana wallet address.'
-    });
-    return;
-  }
+  await interaction.editReply({
+    content: `🔗 **Connect Your Wallet**\n\nClick the button below to connect your Solana wallet:\n\n📱 **Mobile:** Opens in your wallet app\n💻 **Desktop:** Opens in your browser\n\n⏰ **Connection expires in 10 minutes**`,
+    components: [connectButton]
+  });
 
-  try {
-    // Check if user already has a linked wallet
-    const existingUser = await User.findOne({ discordId: userId, isActive: true });
-    
-    if (existingUser) {
-      // Update existing user's wallet address
-      existingUser.walletAddress = walletAddress;
-      existingUser.username = username;
-      await existingUser.save();
-      
-      await interaction.editReply({
-        content: `✅ **Wallet Updated!**\n\n🔗 **New Wallet:** \`${walletAddress}\`\n👤 **Discord User:** ${username}\n\n🎫 **Ready to buy tickets!** Use \`/buy-tickets [number]\` to purchase lottery tickets.`
-      });
-    } else {
-      // Create new user record
-      const newUser = new User({
-        discordId: userId,
-        walletAddress: walletAddress,
-        username: username,
-        isActive: true
-      });
-      await newUser.save();
-      
-      await interaction.editReply({
-        content: `✅ **Wallet Linked Successfully!**\n\n🔗 **Wallet Address:** \`${walletAddress}\`\n👤 **Discord User:** ${username}\n\n🎫 **Ready to buy tickets!** Use \`/buy-tickets [number]\` to purchase lottery tickets.`
-      });
-    }
-
-  } catch (error) {
-    console.error('Error linking wallet:', error);
-    await interaction.editReply({
-      content: '❌ Failed to link wallet. Please try again or contact support.'
-    });
-  }
+  // Store the connection token for verification (in production, use Redis)
+  // For now, we'll handle this in the web interface
 }
 
 export async function handleMyTickets(interaction: any) {
   const userId = interaction.user.id;
 
   try {
-    const tickets = await LotteryTicket.find({ 
-      discordId: userId, 
-      isActive: true 
-    }).sort({ createdAt: -1 }).limit(10);
+    // Ensure DB connection is available
+    await connectDB();
+
+    // Fetch latest 20 tickets for the user (active or not)
+    const tickets = await LotteryTicket.find({
+      discordId: userId,
+    }).sort({ createdAt: -1 }).limit(20);
 
     if (tickets.length === 0) {
       await interaction.editReply({
-        content: 'You don\'t have any active tickets. Use `/buy-tickets` to purchase some!'
+        content: 'You don\'t have any tickets yet. Use `/buy-tickets` to purchase and then select numbers.'
       });
       return;
     }
 
-    let response = ' **Your Recent Tickets:**\n\n';
-    
-    tickets.forEach((ticket, index) => {
-      const numbers = ticket.numbers.join(', ');
-      response += `**Ticket #${index + 1}** (${ticket.ticketId})\n`;
-      response += ` Numbers: ${numbers} |  Powerball: ${ticket.powerball}\n`;
-      response += ` Draw: ${ticket.drawDate.toLocaleDateString()}\n`;
-      response += ` Type: ${ticket.type}\n\n`;
-    });
+    // Chunked replies to avoid 2000-char message limit
+    const header = ' **Your Tickets:**\n\n';
+    let buffer = header;
+    const chunks: string[] = [];
 
-    await interaction.editReply({
-      content: response
+    tickets.forEach((ticket, index) => {
+      const line = [
+        `**#${index + 1}** (${ticket.ticketId})`,
+        `Numbers: ${ticket.numbers.join(', ')} | Powerball: ${ticket.powerball}`,
+        `Type: ${ticket.type} | Draw: ${ticket.drawDate.toLocaleDateString()}`,
+        '',
+      ].join('\n');
+
+      if ((buffer + line).length > 1800) {
+        chunks.push(buffer);
+        buffer = '';
+      }
+      buffer += line + '\n';
     });
+    if (buffer.trim().length > 0) chunks.push(buffer);
+
+    // Send first chunk as the deferred edit, others as follow-ups
+    await interaction.editReply({ content: chunks[0] });
+    for (let i = 1; i < chunks.length; i++) {
+      await interaction.followUp({ content: chunks[i], ephemeral: true });
+    }
 
   } catch (error) {
     console.error('Error fetching tickets:', error);
@@ -253,83 +173,33 @@ export async function handleQuickPick(interaction: any) {
   });
 }
 
-// Start number selection flow after payment completion
-export async function startNumberSelectionFlow(client: any, userId: string, ticketCount: number, paymentId: string) {
-  try {
-    const user = await client.users.fetch(userId);
-    
-    // Initialize active purchase
-    activePurchases.set(userId, {
-      ticketCount,
-      currentTicket: 0,
-      tickets: [],
-      paymentId
+export async function handleSelectNumbers(interaction: any) {
+  const userId = interaction.user.id;
+  
+  // Check if user has an active purchase with completed payment
+  const activePurchase = activePurchases.get(userId);
+  if (!activePurchase) {
+    await interaction.editReply({
+      content: '❌ No active ticket purchase found. Use `/buy-tickets` first.'
     });
-
-    // Clear any existing number selection
-    numberSelections.delete(userId);
-
-    // Create number selection interface
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require('discord.js');
-    
-    // Create number buttons (1-69) in rows of 10
-    const numberRows = [];
-    for (let i = 0; i < 7; i++) {
-      const row = new ActionRowBuilder();
-      for (let j = 1; j <= 10; j++) {
-        const number = i * 10 + j;
-        if (number <= 69) {
-          row.addComponents(
-            new ButtonBuilder()
-              .setCustomId(`number_${number}`)
-              .setLabel(number.toString())
-              .setStyle(ButtonStyle.Secondary)
-          );
-        }
-      }
-      numberRows.push(row);
-    }
-
-    // Create powerball dropdown
-    const powerballOptions = [];
-    for (let i = 1; i <= 25; i++) {
-      powerballOptions.push({
-        label: `Powerball ${i}`,
-        value: i.toString(),
-        description: `Select ${i} as your Powerball number`
-      });
-    }
-
-    const powerballRow = new ActionRowBuilder()
-      .addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('select_powerball')
-          .setPlaceholder('🎯 Select Powerball (1-25)')
-          .addOptions(powerballOptions)
-      );
-
-    // Create action buttons
-    const actionRow = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId('quickpick')
-          .setLabel('🎲 QuickPick')
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId('submit_ticket')
-          .setLabel('✅ Submit Ticket')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true)
-      );
-
-    const allRows = [...numberRows, powerballRow, actionRow];
-
-    await user.send({
-      content: `🎫 **Ticket 1 of ${ticketCount}**\n\n🔢 **Select 5 numbers (1-69):**\n🎯 **Select 1 Powerball (1-25):**\n\n**Current Selection:** \`No numbers selected\`\n\nClick the numbers below or use QuickPick for random numbers!`,
-      components: allRows
-    });
-
-  } catch (error) {
-    console.error('Error starting number selection flow:', error);
+    return;
   }
+
+  if (activePurchase.status !== 'payment_completed') {
+    await interaction.editReply({
+      content: '❌ Payment not completed yet. Please complete payment first.'
+    });
+    return;
+  }
+
+  // Import the payment completed handler
+  const { handlePaymentCompleted } = await import('./interactionHandlers');
+  
+  // Create a mock interaction object for the handler
+  const mockInteraction = {
+    ...interaction,
+    reply: interaction.editReply
+  };
+
+  await handlePaymentCompleted(mockInteraction);
 }
