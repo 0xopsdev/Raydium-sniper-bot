@@ -5,7 +5,8 @@ import { ticketGenerator } from '@/lib/ticketGenerator';
 import User from '@/models/User';
 import LotteryTicket from '@/models/LotteryTicket';
 import Payment from '@/models/Payment';
-import { activePurchases, numberSelections } from '../stores/activeData';
+import Session from '@/models/Session';
+import { activePurchases, numberSelections, sessionTokens } from '../stores/activeData';
 import { syncTicketsToBackend } from '../utils/ticketSync';
 
 export async function handleBuyTickets(interaction: any) {
@@ -24,21 +25,42 @@ export async function handleBuyTickets(interaction: any) {
   const totalAmount = ticketCount * ticketPrice;
 
   try {
-    // Store ticket count for payment flow
+    // Generate secure session token
+    const sessionToken = `session_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+    
+    // Store ticket count for payment flow with session token
     activePurchases.set(userId, {
       ticketCount,
       currentTicket: 0,
       tickets: [],
       paymentId: '', // Will be set after payment creation
       totalAmount,
-      status: 'ticket_count_selected'
+      status: 'ticket_count_selected',
+      sessionToken
     });
+
+    // Store session token in database (15 minutes expiration)
+    try {
+      const session = new Session({
+        sessionToken,
+        userId,
+        ticketCount,
+        totalAmount,
+        expiresAt: new Date(Date.now() + (15 * 60 * 1000)), // 15 minutes
+        isActive: true
+      });
+      await session.save();
+      console.log('✅ Session saved to database:', session.sessionToken);
+    } catch (error) {
+      console.error('❌ Error saving session to database:', error);
+      throw error;
+    }
 
     // Create payment button that opens wallet connection and payment page
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     
     const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
-    const paymentUrl = `${webBaseUrl}/connect-wallet?tickets=${ticketCount}&amount=${totalAmount}&user=${userId}`;
+    const paymentUrl = `${webBaseUrl}/connect-wallet?token=${sessionToken}`;
     
     const payButton = new ActionRowBuilder()
       .addComponents(
@@ -111,8 +133,12 @@ export async function handleMyTickets(interaction: any) {
       return;
     }
 
+    // Create ticket display with badge
+    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+    const badgeUrl = `${webBaseUrl}/badge-mobile.png`;
+    
     // Chunked replies to avoid 2000-char message limit
-    const header = ' **Your Tickets:**\n\n';
+    const header = `🎫 **Your Tickets:**\n\n`;
     let buffer = header;
     const chunks: string[] = [];
 
@@ -132,11 +158,26 @@ export async function handleMyTickets(interaction: any) {
     });
     if (buffer.trim().length > 0) chunks.push(buffer);
 
-    // Send first chunk as the deferred edit, others as follow-ups
-    await interaction.editReply({ content: chunks[0] });
+    // Send first chunk with badge image
+    await interaction.editReply({ 
+      content: chunks[0],
+      files: [{
+        attachment: badgeUrl,
+        name: 'badge-mobile.png'
+      }]
+    });
+    
+    // Send remaining chunks as follow-ups
     for (let i = 1; i < chunks.length; i++) {
       await interaction.followUp({ content: chunks[i], ephemeral: true });
     }
+    
+    // Send web link as a follow-up
+    const webLink = `${webBaseUrl}/?discord_id=${userId}`;
+    await interaction.followUp({
+      content: `🌐 **View your tickets online:** ${webLink}`,
+      ephemeral: true
+    });
 
   } catch (error) {
     console.error('Error fetching tickets:', error);

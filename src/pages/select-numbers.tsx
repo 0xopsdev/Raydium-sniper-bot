@@ -2,21 +2,58 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 
+interface SessionData {
+  userId: string;
+  ticketCount: number;
+  totalAmount: number;
+  timeRemaining: number;
+}
+
 export default function SelectNumbersPage() {
   const router = useRouter();
-  const { paymentId, user, tickets, wallet } = router.query;
+  const { paymentId, token } = router.query;
   
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [powerball, setPowerball] = useState<number>(0);
   const [currentTicket, setCurrentTicket] = useState(1);
   const [allTickets, setAllTickets] = useState<any[]>([]);
   const [mode, setMode] = useState<'manual' | 'quickpick'>('manual');
+  const [sessionData, setSessionData] = useState<SessionData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!paymentId || !user || !tickets) {
+    if (!token) {
       router.push('/');
+      return;
     }
-  }, [paymentId, user, tickets, router]);
+
+    // Validate session token
+    const validateSession = async () => {
+      try {
+        const response = await fetch('/api/session/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          setSessionData(data.session);
+          setLoading(false);
+        } else {
+          setError(data.error || 'Invalid session');
+          setLoading(false);
+        }
+      } catch (err) {
+        setError('Failed to validate session');
+        setLoading(false);
+      }
+    };
+
+    validateSession();
+  }, [token, router]);
 
   const generateQuickPick = () => {
     const numbers: number[] = [];
@@ -67,7 +104,7 @@ export default function SelectNumbersPage() {
     const newTickets = [...allTickets, ticket];
     setAllTickets(newTickets);
 
-    if (currentTicket < parseInt(tickets as string)) {
+    if (currentTicket < (sessionData?.ticketCount || 1)) {
       // Move to next ticket
       setCurrentTicket(currentTicket + 1);
       setSelectedNumbers([]);
@@ -80,13 +117,14 @@ export default function SelectNumbersPage() {
   };
 
   const submitAllTickets = async (ticketsToSubmit: any[]) => {
+    if (!sessionData) return;
+    
     try {
       const response = await fetch('/api/lottery/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          wallet_address: (wallet as string) || '',
-          discord_id: user,
+          discord_id: sessionData.userId,
           tickets: ticketsToSubmit.map(t => ({
             numbers: t.numbers,
             powerball: t.powerball,
@@ -111,8 +149,33 @@ export default function SelectNumbersPage() {
     }
   };
 
-  if (!paymentId || !user || !tickets) {
-    return <div>Loading...</div>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#17191C] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white text-lg">Validating session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !sessionData) {
+    return (
+      <div className="min-h-screen bg-[#17191C] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">❌</div>
+          <h1 className="text-white text-2xl font-bold mb-2">Session Error</h1>
+          <p className="text-gray-300 mb-4">{error || 'Invalid session'}</p>
+          <button 
+            onClick={() => router.push('/')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go Home
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const isComplete = selectedNumbers.length === 5 && powerball > 0;
@@ -124,57 +187,57 @@ export default function SelectNumbersPage() {
         <meta name="description" content="Select your lottery numbers" />
       </Head>
       
-      <main className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-8">
+      <main className="min-h-screen p-8" style={{backgroundColor: '#17191C'}}>
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-white mb-8 text-center">🎫 Select Your Numbers</h1>
+          <h1 className="text-4xl font-bold text-white mb-2 text-center">Select Your Numbers</h1>
           
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/20">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-2 border border-white/20">
             <div className="text-center space-y-2">
-              <p className="text-2xl font-semibold text-white">Ticket {currentTicket} of {tickets}</p>
-              <p className="text-gray-300 font-mono text-sm">Payment ID: {paymentId}</p>
+              <p className="text-2xl font-semibold text-white">Ticket {currentTicket} of {sessionData.ticketCount}</p>
+              {/* <p className="text-gray-300 font-mono text-sm">Payment ID: {paymentId}</p> */}
             </div>
           </div>
 
-        <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-green-400/30">
+        <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-6 mb-2 border border-green-400/30">
           <h3 className="text-2xl font-semibold text-white mb-4">Mode Selection</h3>
           <div className="flex gap-4 justify-center">
-            <button
-              onClick={() => setMode('manual')}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
-                mode === 'manual' 
-                  ? 'bg-blue-600 text-white shadow-lg' 
-                  : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-              }`}
-            >
-              Manual Selection
-            </button>
             <button
               onClick={generateQuickPick}
               className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg"
             >
               🎲 Quick Pick
             </button>
+            <button
+              onClick={() => {
+                setSelectedNumbers([]);
+                setPowerball(0);
+                setMode('manual');
+              }}
+              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg"
+            >
+              ✖ Clear All
+            </button>
           </div>
         </div>
 
         {mode === 'manual' && (
           <>
-            <div className="bg-yellow-500/20 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-yellow-400/30">
+            <div className="bg-yellow-500/20 backdrop-blur-lg rounded-2xl p-6 mb-2 border border-yellow-400/30">
               <h3 className="text-2xl font-semibold text-white mb-4">Select 5 Main Numbers (1-69)</h3>
               <p className="text-gray-200 mb-6">
                 Selected: <span className="text-yellow-300 font-semibold">{selectedNumbers.join(', ') || 'None'}</span> 
                 <span className="text-gray-400 ml-2">({selectedNumbers.length}/5)</span>
               </p>
               
-              <div className="grid grid-cols-10 gap-2">
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-2">
                 {Array.from({ length: 69 }, (_, i) => i + 1).map(number => (
                   <button
                     key={number}
                     onClick={() => selectNumber(number)}
                     className={`p-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
                       selectedNumbers.includes(number) 
-                        ? 'bg-blue-600 text-white shadow-lg scale-105' 
-                        : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white border border-gray-600'
+                        ? 'bg-green-500 text-black shadow-lg scale-105' 
+                        : 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600'
                     }`}
                   >
                     {number}
@@ -183,21 +246,21 @@ export default function SelectNumbersPage() {
               </div>
             </div>
 
-            <div className="bg-red-500/20 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-red-400/30">
+            <div className="bg-red-500/20 backdrop-blur-lg rounded-2xl p-6 mb-2 border border-red-400/30">
               <h3 className="text-2xl font-semibold text-white mb-4">Select Powerball (1-25)</h3>
               <p className="text-gray-200 mb-6">
                 Selected: <span className="text-red-300 font-semibold">{powerball || 'None'}</span>
               </p>
               
-              <div className="grid grid-cols-10 gap-2">
+              <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
                 {Array.from({ length: 25 }, (_, i) => i + 1).map(number => (
                   <button
                     key={number}
                     onClick={() => selectPowerball(number)}
                     className={`p-3 rounded-lg font-semibold text-sm transition-all duration-200 ${
                       powerball === number 
-                        ? 'bg-red-600 text-white shadow-lg scale-105' 
-                        : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white border border-gray-600'
+                        ? 'bg-green-500 text-black shadow-lg scale-105' 
+                        : 'bg-gray-700 text-white hover:bg-gray-600 border border-gray-600'
                     }`}
                   >
                     {number}
@@ -209,14 +272,14 @@ export default function SelectNumbersPage() {
         )}
 
         {mode === 'quickpick' && (
-          <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-green-400/30 text-center">
+            <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-8 mb-2 border border-green-400/30 text-center">
             <h3 className="text-3xl font-bold text-white mb-6">🎲 Quick Pick Generated!</h3>
             <div className="space-y-4 mb-6">
               <div>
                 <p className="text-gray-200 mb-2">Main Numbers:</p>
                 <div className="flex justify-center gap-2 flex-wrap">
                   {selectedNumbers.map(num => (
-                    <span key={num} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-lg">
+                    <span key={num} className="bg-green-500 text-black px-4 py-2 rounded-lg font-semibold text-lg">
                       {num}
                     </span>
                   ))}
@@ -224,7 +287,7 @@ export default function SelectNumbersPage() {
               </div>
               <div>
                 <p className="text-gray-200 mb-2">Powerball:</p>
-                <span className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold text-lg">
+                <span className="bg-green-500 text-black px-4 py-2 rounded-lg font-semibold text-lg">
                   {powerball}
                 </span>
               </div>
@@ -239,55 +302,52 @@ export default function SelectNumbersPage() {
         )}
 
         {isComplete && (
-          <div style={{ 
-            background: '#d4edda', 
-            padding: '1.5rem', 
-            borderRadius: '8px',
-            marginBottom: '2rem',
-            textAlign: 'center'
-          }}>
-            <h3>✅ Ticket Ready!</h3>
-            <p><strong>Main Numbers:</strong> {selectedNumbers.join(', ')}</p>
-            <p><strong>Powerball:</strong> {powerball}</p>
-            <p><strong>Type:</strong> {mode}</p>
+          <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-green-400/30 text-center">
+            <h3 className="text-3xl font-bold text-white mb-6"> Ticket Ready!</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                {/* <p className="text-gray-200 mb-2">Main Numbers:</p> */}
+                <div className="flex justify-center gap-2 flex-wrap">
+                  {selectedNumbers.map(num => (
+                    <span key={num} className="bg-green-500 text-black px-3 py-2 rounded-lg font-semibold">
+                      {num}
+                    </span>
+                  ))}
+                <p className="text-white mt-2 font-semibold">Powerball:</p>
+                <span className="bg-green-500 text-black px-3 py-2 rounded-lg font-semibold">
+                  {powerball}
+                </span>
+                </div>
+              </div>
+              <div>
+              </div>
+              {/* <p className="text-yellow-300 font-semibold">Type: {mode}</p> */}
+            </div>
             
             <button
               onClick={submitTicket}
-              style={{
-                padding: '1rem 2rem',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                marginTop: '1rem'
-              }}
+              className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold text-lg rounded-xl transition-all duration-200 shadow-lg hover:shadow-green-500/25"
             >
-              {currentTicket < parseInt(tickets as string) ? 'Submit & Next Ticket' : 'Submit All Tickets'}
+              {currentTicket < (sessionData?.ticketCount || 1) ? 'Submit & Next Ticket' : 'Submit All Tickets'}
             </button>
           </div>
         )}
 
         {allTickets.length > 0 && (
-          <div style={{ 
-            background: '#f8f9fa', 
-            padding: '1.5rem', 
-            borderRadius: '8px',
-            marginBottom: '2rem'
-          }}>
-            <h3>📋 Submitted Tickets</h3>
-            {allTickets.map((ticket, index) => (
-              <div key={index} style={{ 
-                border: '1px solid #dee2e6', 
-                padding: '1rem', 
-                margin: '0.5rem 0',
-                borderRadius: '4px',
-                backgroundColor: 'white'
-              }}>
-                <p><strong>Ticket {ticket.ticketNumber}:</strong> {ticket.numbers.join(', ')} | Powerball: {ticket.powerball} ({ticket.type})</p>
-              </div>
-            ))}
+          <div className="bg-gray-500/20 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-gray-400/30">
+            <h3 className="text-2xl font-semibold text-white mb-4">Submitted Tickets</h3>
+            <div className="space-y-3">
+              {allTickets.map((ticket, index) => (
+                <div key={index} className="bg-white/10 border border-gray-600 p-4 rounded-lg backdrop-blur-sm">
+                  <p className="text-white">
+                    <span className="font-semibold">Ticket {ticket.ticketNumber}:</span>{' '}
+                    <span className="text-blue-300 font-mono">{ticket.numbers.join(', ')}</span> |{' '}
+                    Powerball: <span className="text-red-300 font-mono">{ticket.powerball}</span>{' '}
+                    (<span className="text-yellow-300">{ticket.type}</span>)
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         </div>

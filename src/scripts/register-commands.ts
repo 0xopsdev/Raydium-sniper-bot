@@ -19,30 +19,30 @@ const commands = [
       }
     ]
   },
-  {
-    name: 'link-wallet',
-    description: 'Link your wallet address to your Discord account',
-    options: [
-      {
-        name: 'address',
-        description: 'Your wallet address',
-        type: 3, // STRING
-        required: true
-      }
-    ]
-  },
+  // {
+  //   name: 'link-wallet',
+  //   description: 'Link your wallet address to your Discord account',
+  //   options: [
+  //     {
+  //       name: 'address',
+  //       description: 'Your wallet address',
+  //       type: 3, // STRING
+  //       required: true
+  //     }
+  //   ]
+  // },
   {
     name: 'my-tickets',
     description: 'View your recent lottery tickets'
   },
-  {
-    name: 'quickpick',
-    description: 'Generate random numbers for your ticket'
-  },
-  {
-    name: 'select-numbers',
-    description: 'Start number selection after payment completion'
-  }
+  // {
+  //   name: 'quickpick',
+  //   description: 'Generate random numbers for your ticket'
+  // },
+  // {
+  //   name: 'select-numbers',
+  //   description: 'Start number selection after payment completion'
+  // }
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN!);

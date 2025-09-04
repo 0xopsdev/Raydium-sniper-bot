@@ -6,6 +6,16 @@ export const activePurchases = new Map<string, {
   paymentId: string;
   totalAmount: number;
   status: 'ticket_count_selected' | 'payment_pending' | 'payment_completed' | 'number_selection' | 'completed';
+  sessionToken: string;
+}>();
+
+// Store secure session tokens
+export const sessionTokens = new Map<string, {
+  userId: string;
+  ticketCount: number;
+  totalAmount: number;
+  createdAt: number;
+  expiresAt: number;
 }>();
 
 // Store number selections

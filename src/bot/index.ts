@@ -87,18 +87,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
       case 'buy-tickets':
         await handleBuyTickets(interaction);
         break;
-      case 'link-wallet':
-        await handleLinkWallet(interaction);
-        break;
+      // case 'link-wallet':
+      //   await handleLinkWallet(interaction);
+      //   break;
       case 'my-tickets':
         await handleMyTickets(interaction);
         break;
-      case 'quickpick':
-        await handleQuickPick(interaction);
-        break;
-      case 'select-numbers':
-        await handleSelectNumbers(interaction);
-        break;
+      // case 'quickpick':
+      //   await handleQuickPick(interaction);
+      //   break;
+      // case 'select-numbers':
+      //   await handleSelectNumbers(interaction);
+      //   break;
       default:
         await interaction.editReply({ content: '❌ Unknown command!' });
     }
