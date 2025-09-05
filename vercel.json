@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/pages/api/**/*.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/bot.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/src/pages/api/$1"
+    },
+    {
+      "src": "/bot/(.*)",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/src/pages/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "api/bot.js": {
+      "maxDuration": 30
+    }
+  }
+}

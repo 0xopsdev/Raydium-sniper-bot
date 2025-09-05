@@ -123,7 +123,7 @@ export async function handleLinkWallet(interaction: any) {
   const connectionToken = `connect_${userId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
   // Store connection token temporarily (in production, use Redis or database)
-  const connectionUrl = `http://localhost:3000/connect-wallet?token=${connectionToken}&user=${userId}`;
+  const connectionUrl = `http://discord-bot-vert-zeta.vercel.app/connect-wallet?token=${connectionToken}&user=${userId}`;
   
   const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
   
