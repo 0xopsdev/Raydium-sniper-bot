@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import LotteryTicket from '../components/LotteryTicket';
 
 interface SessionData {
   userId: string;
@@ -274,24 +275,24 @@ export default function SelectNumbersPage() {
         {mode === 'quickpick' && (
             <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-8 mb-2 border border-green-400/30 text-center">
             <h3 className="text-3xl font-bold text-white mb-6">🎲 Quick Pick Generated!</h3>
-            <div className="space-y-4 mb-6">
-              <div>
-                <p className="text-gray-200 mb-2">Main Numbers:</p>
-                <div className="flex justify-center gap-2 flex-wrap">
-                  {selectedNumbers.map(num => (
-                    <span key={num} className="bg-green-500 text-black px-4 py-2 rounded-lg font-semibold text-lg">
-                      {num}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-200 mb-2">Powerball:</p>
-                <span className="bg-green-500 text-black px-4 py-2 rounded-lg font-semibold text-lg">
-                  {powerball}
-                </span>
-              </div>
+            
+            {/* Beautiful Ticket Preview */}
+            <div className="flex justify-center mb-6">
+              <LotteryTicket
+                ticket={{
+                  ticketId: `QUICK${String(currentTicket).padStart(6, '0')}`,
+                  numbers: selectedNumbers,
+                  powerball: powerball,
+                  type: 'quickpick',
+                  createdAt: new Date().toISOString(),
+                  drawDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+                }}
+                index={currentTicket - 1}
+                showTicketNumber={true}
+                className="transform hover:scale-105 transition-transform duration-300"
+              />
             </div>
+            
             <button
               onClick={() => setMode('manual')}
               className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-xl transition-all duration-200"
@@ -303,25 +304,23 @@ export default function SelectNumbersPage() {
 
         {isComplete && (
           <div className="bg-green-500/20 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-green-400/30 text-center">
-            <h3 className="text-3xl font-bold text-white mb-6"> Ticket Ready!</h3>
-            <div className="space-y-4 mb-6">
-              <div>
-                {/* <p className="text-gray-200 mb-2">Main Numbers:</p> */}
-                <div className="flex justify-center gap-2 flex-wrap">
-                  {selectedNumbers.map(num => (
-                    <span key={num} className="bg-green-500 text-black px-3 py-2 rounded-lg font-semibold">
-                      {num}
-                    </span>
-                  ))}
-                <p className="text-white mt-2 font-semibold">Powerball:</p>
-                <span className="bg-green-500 text-black px-3 py-2 rounded-lg font-semibold">
-                  {powerball}
-                </span>
-                </div>
-              </div>
-              <div>
-              </div>
-              {/* <p className="text-yellow-300 font-semibold">Type: {mode}</p> */}
+            <h3 className="text-3xl font-bold text-white mb-6">🎫 Ticket Ready!</h3>
+            
+            {/* Beautiful Ticket Preview */}
+            <div className="flex justify-center mb-6">
+              <LotteryTicket
+                ticket={{
+                  ticketId: `PREVIEW${String(currentTicket).padStart(6, '0')}`,
+                  numbers: selectedNumbers,
+                  powerball: powerball,
+                  type: mode,
+                  createdAt: new Date().toISOString(),
+                  drawDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+                }}
+                index={currentTicket - 1}
+                showTicketNumber={true}
+                className="transform hover:scale-105 transition-transform duration-300"
+              />
             </div>
             
             <button
@@ -335,17 +334,21 @@ export default function SelectNumbersPage() {
 
         {allTickets.length > 0 && (
           <div className="bg-gray-500/20 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-gray-400/30">
-            <h3 className="text-2xl font-semibold text-white mb-4">Submitted Tickets</h3>
-            <div className="space-y-3">
+            <h3 className="text-2xl font-semibold text-white mb-6 text-center">🎫 Your Submitted Tickets</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {allTickets.map((ticket, index) => (
-                <div key={index} className="bg-white/10 border border-gray-600 p-4 rounded-lg backdrop-blur-sm">
-                  <p className="text-white">
-                    <span className="font-semibold">Ticket {ticket.ticketNumber}:</span>{' '}
-                    <span className="text-blue-300 font-mono">{ticket.numbers.join(', ')}</span> |{' '}
-                    Powerball: <span className="text-red-300 font-mono">{ticket.powerball}</span>{' '}
-                    (<span className="text-yellow-300">{ticket.type}</span>)
-                  </p>
-                </div>
+                <LotteryTicket
+                  key={index}
+                  ticket={{
+                    ...ticket,
+                    ticketId: `TKT${String(ticket.ticketNumber).padStart(6, '0')}`,
+                    createdAt: new Date().toISOString(),
+                    drawDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
+                  }}
+                  index={ticket.ticketNumber - 1}
+                  showTicketNumber={true}
+                  className="transform hover:scale-105 transition-transform duration-300"
+                />
               ))}
             </div>
           </div>

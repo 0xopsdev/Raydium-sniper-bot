@@ -70,10 +70,40 @@ export async function handleBuyTickets(interaction: any) {
           .setURL(paymentUrl)
       );
 
-    const paymentMessage = `🎫 **Step 1: Ticket Count Selected**\n\n📊 **Tickets:** ${ticketCount}\n💰 **Total Cost:** $${totalAmount} USDC\n\n**Next Step:** Click the button below to connect your wallet and send payment:`;
+    // Create beautiful embed for ticket purchase
+    const purchaseEmbed = {
+      title: '🎫 Crypto Lottery - Ticket Purchase',
+      description: `Ready to buy **${ticketCount}** lottery ticket${ticketCount > 1 ? 's' : ''}?`,
+      color: 0xff6b35, // Orange color
+      thumbnail: {
+        url: `${webBaseUrl}/badge-mobile.png`
+      },
+      fields: [
+        {
+          name: '🎰 Ticket Details',
+          value: `**Quantity:** ${ticketCount} ticket${ticketCount > 1 ? 's' : ''}\n**Price per ticket:** $5.00 USDC\n**Total Cost:** **$${totalAmount} USDC**`,
+          inline: true
+        },
+        {
+          name: '🎲 What You Get',
+          value: `• ${ticketCount} lottery ticket${ticketCount > 1 ? 's' : ''} with your chosen numbers\n• Chance to win the jackpot\n• Beautiful ticket display online`,
+          inline: true
+        },
+        {
+          name: '💳 Payment Method',
+          value: 'Connect your Solana wallet and send USDC payment',
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'Crypto Lottery • Secure blockchain payment',
+        icon_url: `${webBaseUrl}/badge-mobile.png`
+      },
+      timestamp: new Date().toISOString()
+    };
 
     await interaction.editReply({
-      content: paymentMessage,
+      embeds: [purchaseEmbed],
       components: [payButton]
     });
 
@@ -126,58 +156,142 @@ export async function handleMyTickets(interaction: any) {
       discordId: userId,
     }).sort({ createdAt: -1 }).limit(20);
 
+    // Create beautiful Discord embeds for tickets
+    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+
     if (tickets.length === 0) {
-      await interaction.editReply({
-        content: 'You don\'t have any tickets yet. Use `/buy-tickets` to purchase and then select numbers.'
-      });
+      const noTicketsEmbed = {
+        title: '🎫 No Tickets Found',
+        description: 'You don\'t have any lottery tickets yet!',
+        color: 0xff6b6b, // Red color
+        thumbnail: {
+          url: `${webBaseUrl}/badge-mobile.png`
+        },
+        fields: [
+          {
+            name: '🚀 Get Started',
+            value: 'Use `/buy-tickets` to purchase your first lottery tickets!',
+            inline: false
+          },
+          {
+            name: '💰 Ticket Price',
+            value: 'Only **$5.00 USDC** per ticket',
+            inline: true
+          },
+          {
+            name: '🎲 How It Works',
+            value: '1. Buy tickets\n2. Select your numbers\n3. Wait for the draw!',
+            inline: true
+          }
+        ],
+        footer: {
+          text: 'Crypto Lottery • Start your winning journey!',
+          icon_url: `${webBaseUrl}/badge-mobile.png`
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      await interaction.editReply({ embeds: [noTicketsEmbed] });
       return;
     }
-
-    // Create ticket display with badge
-    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
-    const badgeUrl = `${webBaseUrl}/badge-mobile.png`;
-    
-    // Chunked replies to avoid 2000-char message limit
-    const header = `🎫 **Your Tickets:**\n\n`;
-    let buffer = header;
-    const chunks: string[] = [];
-
-    tickets.forEach((ticket, index) => {
-      const line = [
-        `**#${index + 1}** (${ticket.ticketId})`,
-        `Numbers: ${ticket.numbers.join(', ')} | Powerball: ${ticket.powerball}`,
-        `Type: ${ticket.type} | Draw: ${ticket.drawDate.toLocaleDateString()}`,
-        '',
-      ].join('\n');
-
-      if ((buffer + line).length > 1800) {
-        chunks.push(buffer);
-        buffer = '';
-      }
-      buffer += line + '\n';
-    });
-    if (buffer.trim().length > 0) chunks.push(buffer);
-
-    // Send first chunk with badge image
-    await interaction.editReply({ 
-      content: chunks[0],
-      files: [{
-        attachment: badgeUrl,
-        name: 'badge-mobile.png'
-      }]
-    });
-    
-    // Send remaining chunks as follow-ups
-    for (let i = 1; i < chunks.length; i++) {
-      await interaction.followUp({ content: chunks[i], ephemeral: true });
-    }
-    
-    // Send web link as a follow-up
     const webLink = `${webBaseUrl}/?discord_id=${userId}`;
-    await interaction.followUp({
-      content: `🌐 **View your tickets online:** ${webLink}`,
-      ephemeral: true
-    });
+    
+    // Create main embed
+    const mainEmbed = {
+      title: '🎫 Your Lottery Tickets',
+      description: `You have **${tickets.length}** ticket(s) for the upcoming draw!`,
+      color: 0x00ff00, // Green color
+      thumbnail: {
+        url: `${webBaseUrl}/badge-mobile.png`
+      },
+      fields: [
+        {
+          name: '🌐 View Online',
+          value: `[Click here to see your tickets](${webLink})`,
+          inline: false
+        }
+      ],
+      footer: {
+        text: 'Crypto Lottery • Use /buy-tickets to get more!',
+        icon_url: `${webBaseUrl}/badge-mobile.png`
+      },
+      timestamp: new Date().toISOString()
+    };
+
+    // Send main embed
+    await interaction.editReply({ embeds: [mainEmbed] });
+
+    // Create individual ticket embeds - each ticket gets its own embed for maximum clarity
+    const ticketEmbeds = [];
+    
+    for (let i = 0; i < tickets.length; i++) {
+      const ticket = tickets[i];
+      const numbersDisplay = ticket.numbers.map((num: number) => `**__${num.toString().padStart(2, '0')}__**`).join(' • ');
+      const powerballDisplay = `**__${ticket.powerball.toString().padStart(2, '0')}__**`;
+      
+      const embed = {
+        title: `🎫 TICKET : ${i + 1} - ${ticket.ticketId}`,
+        description: `**⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘⚘**`,
+        color: ticket.type === 'quickpick' ? 0x00ff88 : 0x4a90e2, // Green for quickpick, blue for manual
+        thumbnail: {
+          url: `${webBaseUrl}/badge-mobile.png`
+        },
+        fields: [
+          {
+            name: `🔢 MAIN NUMBERS`,
+            value: `\`\`\`ansi\n${ticket.numbers.map((num: number) => `\u001b[31m\u001b[1m${num.toString().padStart(2, '0')}\u001b[0m`).join(' • ')}\`\`\``,
+            inline: true
+          },
+          {
+            name: `🎱 POWERBALL`,
+            value: `\`\`\`ansi\n\u001b[31m\u001b[1m${ticket.powerball.toString().padStart(2, '0')}\u001b[0m\`\`\``,
+            inline: true
+          },
+          {
+            name: `📅 DRAW DATE`,
+            value: ticket.drawDate.toLocaleDateString(),
+            inline: true
+          },
+          {
+            name: `🎯 TICKET TYPE`,
+            value: ticket.type === 'quickpick' ? '🎲 Quick Pick' : '✋ Manual Selection',
+            inline: true
+          },
+          {
+            name: `⏰ PURCHASED`,
+            value: ticket.createdAt.toLocaleDateString(),
+            inline: true
+          },
+          {
+            name: `💰 TICKET VALUE`,
+            value: '$5.00 USDC',
+            inline: true
+          }
+        ],
+        footer: {
+          text: `Crypto Lottery • Ticket ${i + 1} of ${tickets.length}`,
+          icon_url: `${webBaseUrl}/badge-mobile.png`
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      ticketEmbeds.push(embed);
+    }
+
+    // Send individual ticket embeds as follow-ups (max 10 per batch to avoid rate limits)
+    const maxEmbedsPerBatch = 10;
+    for (let i = 0; i < ticketEmbeds.length; i += maxEmbedsPerBatch) {
+      const batch = ticketEmbeds.slice(i, i + maxEmbedsPerBatch);
+      await interaction.followUp({ 
+        embeds: batch, 
+        ephemeral: true 
+      });
+      
+      // Small delay between batches to avoid rate limits
+      if (i + maxEmbedsPerBatch < ticketEmbeds.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
   } catch (error) {
     console.error('Error fetching tickets:', error);

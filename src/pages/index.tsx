@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import LotteryTicket from '../components/LotteryTicket';
 
 export default function Home() {
   const router = useRouter();
@@ -99,17 +100,15 @@ export default function Home() {
             </div>
           )}
 
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
               {tickets.map((ticket: any, index) => (
-                <div key={index} className="bg-white/10 border border-gray-600 p-4 rounded-lg backdrop-blur-sm">
-                  <div className="text-white">
-                    <div className="font-semibold text-lg mb-2">Ticket #{index + 1} {ticket.ticketId && `(${ticket.ticketId})`}</div>
-                    <div className="space-y-1 text-gray-200">
-                      <div>Numbers: <span className="text-blue-300 font-mono">{ticket.numbers.join(', ')}</span> | Powerball: <span className="text-red-300 font-mono">{ticket.powerball}</span></div>
-                      <div>Type: <span className="text-yellow-300">{ticket.type}</span> | Created: <span className="text-gray-300">{new Date(ticket.createdAt).toLocaleDateString()}</span></div>
-                    </div>
-                  </div>
-                </div>
+                <LotteryTicket
+                  key={index}
+                  ticket={ticket}
+                  index={index}
+                  showTicketNumber={true}
+                  className="transform hover:scale-105 transition-transform duration-300"
+                />
               ))}
             </div>
           </div>

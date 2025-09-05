@@ -2,4 +2,243 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Beautiful Lottery Ticket Styles */
+.lottery-ticket {
+  @apply relative bg-white border-2 border-gray-800 rounded-lg shadow-2xl;
+  width: 320px;
+  min-height: 200px;
+  font-family: 'Courier New', monospace;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 3px solid #2c3e50;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+
+.lottery-ticket::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 4px,
+      rgba(0, 0, 0, 0.03) 4px,
+      rgba(0, 0, 0, 0.03) 8px
+    );
+  pointer-events: none;
+}
+
+.ticket-header {
+  @apply flex justify-between items-center p-4 border-b-2 border-gray-300;
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  margin: -3px -3px 0 -3px;
+  border-radius: 6px 6px 0 0;
+}
+
+.ticket-logo {
+  @apply flex items-center space-x-2;
+}
+
+.logo-circle {
+  @apply w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.logo-text {
+  @apply text-black font-bold text-sm;
+  font-family: 'Arial Black', sans-serif;
+}
+
+.logo-text-main {
+  @apply font-bold text-sm tracking-wider;
+  font-family: 'Arial Black', sans-serif;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.ticket-type-badge {
+  @apply bg-green-500 text-white px-2 py-1 rounded text-xs font-bold;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.ticket-id-section {
+  @apply p-3 text-center border-b border-gray-300;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.ticket-id-label {
+  @apply text-xs text-gray-600 font-bold tracking-wider;
+  letter-spacing: 1px;
+}
+
+.ticket-id-value {
+  @apply text-lg font-bold text-gray-800 mt-1;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+}
+
+.numbers-section {
+  @apply p-4;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.main-numbers {
+  @apply mb-4;
+}
+
+.numbers-label {
+  @apply text-xs text-gray-600 font-bold tracking-wider mb-2;
+  letter-spacing: 1px;
+}
+
+.numbers-grid {
+  @apply flex justify-center space-x-2;
+}
+
+.number-ball {
+  @apply w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 2px solid #1f4e79;
+  font-family: 'Arial Black', sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.powerball-section {
+  @apply text-center;
+}
+
+.powerball-label {
+  @apply text-xs text-gray-600 font-bold tracking-wider mb-2;
+  letter-spacing: 1px;
+}
+
+.powerball-ball {
+  @apply w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm mx-auto;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border: 2px solid #8b0000;
+  font-family: 'Arial Black', sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.draw-info {
+  @apply p-3 bg-gray-50 border-t border-gray-300;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.draw-date, .purchase-time {
+  @apply flex justify-between text-xs;
+}
+
+.draw-label, .time-label {
+  @apply text-gray-600 font-bold;
+  letter-spacing: 0.5px;
+}
+
+.draw-value, .time-value {
+  @apply text-gray-800 font-semibold;
+  font-family: 'Courier New', monospace;
+}
+
+.ticket-footer {
+  @apply flex justify-between items-center p-3 bg-gray-100 border-t-2 border-gray-400;
+  background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+  margin: 0 -3px -3px -3px;
+  border-radius: 0 0 6px 6px;
+}
+
+.ticket-number {
+  @apply text-xs font-bold text-gray-700;
+  letter-spacing: 1px;
+}
+
+.ticket-value {
+  @apply text-sm font-bold text-green-600;
+  font-family: 'Arial Black', sans-serif;
+}
+
+.ticket-decoration {
+  @apply absolute inset-0 pointer-events-none;
+}
+
+.decoration-line {
+  @apply absolute w-full h-0.5 bg-gradient-to-r from-transparent via-gray-400 to-transparent;
+}
+
+.decoration-line.top {
+  top: 60px;
+}
+
+.decoration-line.bottom {
+  bottom: 50px;
+}
+
+.corner-cuts {
+  @apply absolute inset-0;
+}
+
+.corner-cut {
+  @apply absolute w-4 h-4 bg-gray-800;
+}
+
+.corner-cut.top-left {
+  top: -2px;
+  left: -2px;
+  border-radius: 0 0 8px 0;
+}
+
+.corner-cut.top-right {
+  top: -2px;
+  right: -2px;
+  border-radius: 0 0 0 8px;
+}
+
+.corner-cut.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-radius: 0 8px 0 0;
+}
+
+.corner-cut.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-radius: 8px 0 0 0;
+}
+
+/* Hover effects */
+.lottery-ticket:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 15px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.3s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .lottery-ticket {
+    width: 280px;
+  }
+  
+  .number-ball {
+    @apply w-8 h-8 text-xs;
+  }
+  
+  .powerball-ball {
+    @apply w-10 h-10 text-xs;
+  }
+}
 
