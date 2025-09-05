@@ -181,7 +181,8 @@ app.use('/api', apiRoutes);
 // Start server on port 3000
 const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(` API Server running on http://localhost:${PORT}`);
+  console.log(` API Server running on https://discord-bot.vercel.app`);
+  // console.log(` API Server running on http://localhost:${PORT}`);
 });
 
 // Login to Discord with retry logic

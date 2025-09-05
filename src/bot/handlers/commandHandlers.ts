@@ -59,7 +59,7 @@ export async function handleBuyTickets(interaction: any) {
     // Create payment button that opens wallet connection and payment page
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     
-    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+    const webBaseUrl = process.env.WEB_BASE_URL || '';
     const paymentUrl = `${webBaseUrl}/connect-wallet?token=${sessionToken}`;
     
     const payButton = new ActionRowBuilder()
@@ -157,7 +157,7 @@ export async function handleMyTickets(interaction: any) {
     }).sort({ createdAt: -1 }).limit(20);
 
     // Create beautiful Discord embeds for tickets
-    const webBaseUrl = process.env.WEB_BASE_URL || 'http://localhost:3000';
+    const webBaseUrl = process.env.WEB_BASE_URL || '';
 
     if (tickets.length === 0) {
       const noTicketsEmbed = {
