@@ -138,4 +138,4 @@ For support, join our Discord server or create an issue on GitHub.
 
 ---
 
-**Built with roswelly for cryptolottery**
+**Built with Mist and roswelly for cryptolottery**
